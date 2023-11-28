@@ -1,0 +1,3 @@
+[submodule "cn/cerberus"]
+	path = cn/cerberus
+	url = git@github.com:GaloisInc/cerberus.git
