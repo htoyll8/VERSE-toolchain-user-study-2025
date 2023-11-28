@@ -13,5 +13,5 @@ USER user1
 ENV HOME /home/user1
 WORKDIR /home/user1
 RUN opam init --disable-sandboxing
-RUN eval `opam env` && \
-  opam install -y ocamlfind ocamlbuild pprint yojson ppx_sexp_conv sexplib ppx_deriving cmdliner menhir z3 dune lem sha apron
+#RUN eval `opam env` && \
+#  opam install -y ocamlfind ocamlbuild pprint yojson ppx_sexp_conv sexplib ppx_deriving cmdliner menhir z3 dune lem sha apron
