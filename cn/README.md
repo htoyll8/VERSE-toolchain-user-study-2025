@@ -8,7 +8,10 @@ Be sure to first invoke `make` in the parent directory.
 
 ### Compiling the Docker Container from Scratch
 
-TODO
+```
+cd cerberus
+make -f Makefile_docker release
+```
 
 ## Usage
 
