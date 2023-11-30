@@ -1,6 +1,6 @@
 .PHONY: init update_submodules pull_docker
 
-init: update_submodules
+init: update_submodules pull_docker
 
 update_submodules:
 	git submodule update --init --recursive
