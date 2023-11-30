@@ -28,15 +28,16 @@ TODO: Figure out the proof workflow with `cn`.
 
 You can also work from within in the Docker container.
 
-For example, within this directory you can execute the CN test suite as follows:
+For example, you can execute the CN test suite as follows:
 
 ```bash
 docker run -it --rm -v "$PWD":/data -w /data bracevac/cn /bin/bash
-user1@efc6aa78f4c5:/data$ ./cerberus/tests/run-cn.sh
+user1@efc6aa78f4c5:/data$ cd /home/opam/cerberus/tests/ 
+user1@efc6aa78f4c5:/home/opam/cerberus/tests$ ./run-cn.sh
 ```
 
 TODO: Move away from Docker hub and use Artifactory.
-
+TODO: The test suite if broken if you mount this directory and invoke `./cerberus/tests/run-cn.sh`.
 
 ## Case Studies
 
