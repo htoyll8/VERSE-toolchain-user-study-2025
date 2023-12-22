@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker run -it --rm -v "$PWD":/data -w /data bracevac/cn cn "$@"
+docker run -it --rm -v "$PWD":/data -w /data artifactory.galois.com:5032/cn cn "$@"

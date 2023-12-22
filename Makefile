@@ -6,4 +6,4 @@ update_submodules:
 	git submodule update --init --recursive
 
 pull_docker:
-	docker pull bracevac/cn #TODO: point to artifactory
+	docker pull artifactory.galois.com:5032/cn 
