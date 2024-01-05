@@ -2,13 +2,18 @@
 // Mike Dodds - Galois Inc - January 2024 
 
 // To get CN to watch this file for modifications: 
-//   $ echo "tutorial.c" | entr -c ../cn/cn tutorial.c
+//   $ echo "tutorial.c" | entr -c ../cn/cn --slow-smt=1 --state-file=./tutorial.html tutorial.c
+// This relies on the entr utility which monitors files for changes. 
 
 /*
 Question dump: 
 - Is there a way to add inline assertions? 
-- What's going on with the 'take' syntax? Something like the inhale / exhale? in
+- What's going on with the 'take' syntax? Something like the inhale / exhale in
   Dafny? 
+- How do we get CN to dump out the txt trace? 
+
+Suggestions: 
+- Give the HTML output flag a better name 
 */
 
 // A main() function that does nothing. This can't fault, and therefore requires
@@ -128,12 +133,24 @@ predicate (datatype seq) IntList(pointer p) {
 }
 @*/
 
+/*@
+predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
+  if (addr_eq(p,tail)) { 
+    return Seq_Nil{};
+  } else { 
+    take H = Owned<struct int_list>(p);
+    assert (is_null(H.next) || (integer)H.next != 0);
+    take tl = IntListSeg(H.next, tail);
+    return (Seq_Cons { val: H.val, next: tl });
+  }
+}
+@*/
 
 // A function on lists that does nothing 
 
 struct int_list* list_do_nothing( struct int_list *xs ) 
-/*@ requires take Xs = IntList(xs) @*/
-/*@ ensures take Ys = IntList(return) @*/
+/*@ requires take Xs = IntListSeg(xs,NULL) @*/
+/*@ ensures take Ys = IntListSeg(return,NULL) @*/
 /*@ ensures Ys == Xs @*/
 { 
     struct int_list *ys; 
@@ -141,31 +158,71 @@ struct int_list* list_do_nothing( struct int_list *xs )
     return ys; 
 }
 
+// From the paper. Here power_uf(-,-) is an uninterpreted function but we use a
+// lemma to allow CN to reason about it. 
 
-// A predicate that says every list node is 7 
+void lemma_power2_def(int y) 
+/*@ trusted @*/
+/*@ requires y >= 0 @*/
+/*@ ensures (power_uf(2,y+1)) == (2 * power_uf(2,y)) @*/
+/*@ ensures (power_uf(2,0)) == 1 @*/
+{}
 
-// /*@ 
-// predicate (datatype seq) IntList7(pointer p) {
-//   if (is_null(p)) { 
-//     return Seq_Nil{};
-//   } else { 
-//     take H = Owned<struct int_list>(p);
-//     assert (is_null(H.next) || (integer)H.next != 0);
-//     take tl = IntList7(H.next);
-//     return (Seq_Cons { val: H.val, next: tl });
-//   }
-// }
-// @*/ 
+int power2_1() 
+/*@ ensures return == power_uf(2,0) @*/
+{
+    int i = 0; 
+    int pow = 1; 
+    lemma_power2_def(i); 
+    return pow; 
+}
 
-// void list_set_to_7( struct int_list *head) 
-// /*@ requires take Xs = IntList(head) @*/
-// /*@ ensures take Ys = IntList(head) @*/
+int power2_2(int y) 
+/*@ requires 0 < y; y < 31 @*/
+/*@ ensures return == power_uf(2,y) @*/
+{
+    int i = 0; 
+    int pow = 1; 
+    lemma_power2_def(i); 
+
+    while (i <= y) 
+    /*@ inv 0 < i; i <= y @*/
+    /*@ inv pow == power_uf(2,i) @*/
+    { 
+        pow = pow * 2; 
+        i = i + 1; 
+        lemma_power2_def(i); 
+    }
+    return pow; 
+}
+
+// void list_walk( struct int_list *head) 
+// /*@ requires take Xs = IntListSeg(head,NULL) @*/
+// /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 // {
 //     struct int_list *curr; 
 //     curr = head; 
 
 //     while (curr != 0) 
-//     /*@ inv take whileInv = IntList(head) @*/
+//     /*@ inv take Visited = IntListSeg(head,curr) @*/
+//     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
+//     { 
+//         curr = curr->next; 
+//     }
+//     return;  
+// }
+
+
+// void list_set_to_7( struct int_list *head) 
+// /*@ requires take Xs = IntListSeg(head,NULL) @*/
+// /*@ ensures take Ys = IntListSeg(head,NULL) @*/
+// {
+//     struct int_list *curr; 
+//     curr = head; 
+
+//     while (curr != 0) 
+//     /*@ inv take Visited = IntListSeg(head,curr) @*/
+//     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
 //     { 
 //         curr->val = 7; 
 //         curr = curr->next; 
