@@ -1,19 +1,29 @@
-// Some simple CN examples 
+// Some simple CN examples for tutorial purposes 
 // Mike Dodds - Galois Inc - January 2024 
 
-// To get CN to watch this file for modifications: 
-//   $ echo "tutorial.c" | entr -c ../cn/cn --slow-smt=1 --state-file=./tutorial.html tutorial.c
-// This relies on the entr utility which monitors files for changes. 
-
 /*
-Question dump: 
-- Is there a way to add inline assertions? 
+MDD questions: 
+- Is there a way to add inline assertions?  UPDATE: Yes! You can write 'assert
+  <something>', or comment it using the CN syntax. But there's no particular
+  magic about this - it seems to just be a wrapper around the normal C assert
+  command. 
+- Is it possible to assert proof-state properties inline? Eg. assert what's
+  currently owned? 
 - What's going on with the 'take' syntax? Something like the inhale / exhale in
   Dafny? 
-- How do we get CN to dump out the txt trace? 
+- How do we get CN to dump out the txt trace? UPDATE: this seems to be
+  hard-coded 
+- confused by the {x}@start notation? 
+- What does free look like? Malloc? 
 
-Suggestions: 
-- Give the HTML output flag a better name 
+Suggestions / warts:  
+- It would be great to just get syntax highlighting working on the CN portions
+  of the file
+- The debug mode at the moment is extremely rudimentary 
+- Give the HTML output flag a more descriptive name 
+- Fix the hard-coded txt trace file 
+- Post-state variable assertions are a weird little gotcha? 
+- Unclear what the meaning / types of the values bound by 'take' are? 
 */
 
 // A main() function that does nothing. This can't fault, and therefore requires
@@ -30,6 +40,8 @@ int main() {
 signed int add_1(signed int x, signed int y) 
 /*@ requires x == 0; y == 0 @*/
 /*@ ensures return == {x}@start + {y}@start @*/
+// /*@ ensures return == x + y @*/ // <-- equivalent???
+
 { 
     signed int i; 
     i = x + y; 
@@ -41,7 +53,8 @@ signed int add_1(signed int x, signed int y)
 
 signed int add_2(signed int x, signed int y) 
 /*@ requires x == 0 @*/
-/*@ ensures return == {x}@start + {y}@start @*/
+/*@ ensures return == x + y @*/
+// 
 { 
     signed int i; 
     i = x + y; 
@@ -106,6 +119,64 @@ void swap_1(int *a, int *b)
     *b = temp;
 }
 
+// We can prove normal properties of straight-line code. Note that inline
+// assertions are supported, but that they seem to use the standard C syntax for
+// boolean assertions rather than CN's syntax. 
+
+int assign_1 (int x) 
+/*@ requires x == 7 @*/ 
+/*@ ensures return == 0 @*/
+{ 
+  x = 0; 
+  assert (x == 0); 
+  return(x); 
+} 
+
+// Note that it seems like the variables x / y are bound at the start of the
+// function, even in the ensures clauses. So this doesn't work: 
+
+// void assign_2 (int x) 
+// /*@ requires x == 7 @*/ 
+// /*@ ensures x == 0 @*/
+// { 
+//   x = 0; 
+// } 
+
+// On the other hand, we can assert properties of the post-state easily if the
+// values are locations in memory, and the function takes pointers  
+
+void assign_ptr_1 (int *x, int *y) 
+/*@ requires take Xpre = Owned<int>(x) @*/
+/*@ requires take Ypre = Owned<int>(y) @*/
+/*@ requires *x == 7; *y == 7 @*/
+/*@ ensures take Xpost = Owned<int>(x) @*/
+/*@ ensures take Ypost = Owned<int>(y) @*/
+/*@ ensures *x == 0; *y == 0 @*/
+{ 
+  *x = 0; 
+  *y = 0; 
+} 
+
+// We can assert properties inline about memory cells as well. We don't need
+// ownership assertions here for some reason? I guess this is because these are
+// only required wherever they could be ambiguous, ie. at control-flow and fn
+// interfaces?? 
+
+void inline_assert_1 (int *x, int *y) 
+/*@ requires take Xpre = Owned<int>(x) @*/
+/*@ requires take Ypre = Owned<int>(y) @*/
+/*@ requires *x == 7; *y == 7 @*/
+/*@ ensures take Xpost = Owned<int>(x) @*/
+/*@ ensures take Ypost = Owned<int>(y) @*/
+/*@ ensures *x == 0; *y == 0 @*/
+{ 
+  *x = 0; 
+  assert (*x == 0 && *y == 7);  // Assertions are checked during verification 
+  // /*@ assert take Xmid = Owned<int>(x) @*/ <-- Doesn't parse 
+  // /*@ assert *x == 0; *y == 0 @*/ // <-- Doesn't parse
+  *y = 0; 
+} 
+
 
 // A linked list of integers -- struct def and recursive predicate. Taken from:
 // https://github.com/rems-project/cerberus/blob/master/tests/cn/append.c 
@@ -121,19 +192,6 @@ datatype seq {
   Seq_Cons {integer val, datatype seq next}
 }
 
-predicate (datatype seq) IntList(pointer p) {
-  if (is_null(p)) { 
-    return Seq_Nil{};
-  } else { 
-    take H = Owned<struct int_list>(p);
-    assert (is_null(H.next) || (integer)H.next != 0);
-    take tl = IntList(H.next);
-    return (Seq_Cons { val: H.val, next: tl });
-  }
-}
-@*/
-
-/*@
 predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
   if (addr_eq(p,tail)) { 
     return Seq_Nil{};
@@ -158,8 +216,9 @@ struct int_list* list_do_nothing( struct int_list *xs )
     return ys; 
 }
 
-// From the paper. Here power_uf(-,-) is an uninterpreted function but we use a
-// lemma to allow CN to reason about it. 
+
+// From the paper. Here power_uf(-,-) is an uninterpreted function. We use a
+// lemma to allow CN to reason about this function. 
 
 void lemma_power2_def(int y) 
 /*@ trusted @*/
@@ -177,24 +236,93 @@ int power2_1()
     return pow; 
 }
 
-int power2_2(int y) 
-/*@ requires 0 < y; y < 31 @*/
-/*@ ensures return == power_uf(2,y) @*/
-{
-    int i = 0; 
-    int pow = 1; 
-    lemma_power2_def(i); 
+// int power2_2(int y) 
+// /*@ requires 0 < y; y < 31 @*/
+// // /*@ ensures return == power_uf(2,y) @*/
+// {
+//     int i = 0; 
+//     int pow = 1; 
+//     lemma_power2_def(i); 
 
-    while (i <= y) 
-    /*@ inv 0 < i; i <= y @*/
-    /*@ inv pow == power_uf(2,i) @*/
-    { 
-        pow = pow * 2; 
-        i = i + 1; 
-        lemma_power2_def(i); 
-    }
-    return pow; 
+//     while (i <= y) 
+//     /*@ inv 0 < i; i <= y @*/
+//     /*@ inv pow == power_uf(2,i) @*/
+//     { 
+//         pow = pow * 2; 
+//         i = i + 1; 
+//         lemma_power2_def(i); 
+//     }
+//     return pow; 
+// }
+
+
+// malloc() doesn't work. This isn't too surprising since it's strictly
+// speaking a library function. But I wonder what the specification of that
+// function should be? 
+
+// void malloc_1() 
+// /*@ ensures take New = Owned<int>(return) @*/
+// {
+//     int *new; 
+//     new = malloc(sizeof(int)); 
+//     return new; 
+// }
+
+// We can define a fake malloc() function that only works on ints 
+
+int* my_malloc_int()
+/*@ trusted @*/
+/*@ ensures take New = Owned<int>(return)@*/
+{}
+
+int* malloc_assign_1()
+/*@ ensures take New = Owned<int>(return)@*/
+/*@ ensures *return == 7 @*/
+{
+    int *new; 
+    new = my_malloc_int(); 
+    *new = 7; 
+    return new; 
 }
+
+
+// free() is also not defined, which is a bit more surprising. This example
+// gives the following error: 
+//    > tutorial.c:292:5: error: use of undeclared identifier 'free'
+
+// void free_1( int* x, int *y )
+// /*@ requires take Xpre = Owned<int>(x) @*/
+// /*@ requires take Ypre = Owned<int>(y) @*/
+// /*@ ensures take Ypost = Owned<int>(y) @*/
+// {
+//     free(x); 
+// }
+
+
+
+// We can use the 'extract' keyword to cast a piece of memory into another type.
+// This example modified from
+// https://github.com/rems-project/cerberus/blob/master/tests/cn/swap_pair.c 
+
+void extract_test_1(unsigned long int *pair_p, int i, int n) 
+/*@ requires take pairStart = each (integer j; 0 <= j && j < n) 
+                                {Owned(pair_p + j)} @*/
+/*@ requires n > i; i >= 0 @*/ 
+/*@ ensures take pairEnd = each (integer j; 0 <= j && j < n) 
+                                {Owned(pair_p + j)} @*/
+{
+    /*@ extract Owned<unsigned long int>, i @*/ // <-- required to read / write 
+    unsigned long int tmp = pair_p[i];
+    pair_p[i] = 7; 
+}
+
+
+
+
+
+/*===================================================================*/
+/* Old broken stuff below...                                         */
+/*===================================================================*/
 
 // void list_walk( struct int_list *head) 
 // /*@ requires take Xs = IntListSeg(head,NULL) @*/
@@ -253,3 +381,16 @@ int power2_2(int y)
 //     curr = prev;
 //     return curr; 
 // }
+
+
+// predicate (datatype seq) IntList(pointer p) {
+//   if (is_null(p)) { 
+//     return Seq_Nil{};
+//   } else { 
+//     take H = Owned<struct int_list>(p);
+//     assert (is_null(H.next) || (integer)H.next != 0);
+//     take tl = IntList(H.next);
+//     return (Seq_Cons { val: H.val, next: tl });
+//   }
+// }
+
