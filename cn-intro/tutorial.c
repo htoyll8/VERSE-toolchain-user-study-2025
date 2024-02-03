@@ -1,202 +1,274 @@
-// Some simple CN examples for tutorial purposes 
-// Mike Dodds - Galois Inc - January 2024 
+// Some simple CN examples for tutorial purposes
+// Mike Dodds - Galois Inc - January 2024
+
+// CN Manual (WIP): https://github.com/rems-project/cerberus/blob/master/backend/cn/manual/manual.md
 
 /*
-MDD questions: 
+MDD questions:
 - Is there a way to add inline assertions?  UPDATE: Yes! You can write 'assert
   <something>', or comment it using the CN syntax. But there's no particular
   magic about this - it seems to just be a wrapper around the normal C assert
-  command. 
+  command.
 - Is it possible to assert proof-state properties inline? Eg. assert what's
-  currently owned? 
+  currently owned? UPDATE: inline assertions are checked, and these can be
+  enclosed in 'magic comments'. But this is just the same as asserting a
+  concrete fact about the program state. I.e we can't use this for ghost state
+  assertions.
 - What's going on with the 'take' syntax? Something like the inhale / exhale in
-  Dafny? 
+  Dafny? UPDATE: this is 'resource-let' - see the manual
 - How do we get CN to dump out the txt trace? UPDATE: this seems to be
-  hard-coded 
-- confused by the {x}@start notation? 
-- What does free look like? Malloc? 
+  hard-coded
+- confused by the {x}@start notation? UPDATE: seems to deprecated now.
+- What does free look like? Malloc?
 
-Suggestions / warts:  
+Suggestions / warts:
 - It would be great to just get syntax highlighting working on the CN portions
   of the file
-- The debug mode at the moment is extremely rudimentary 
-- Give the HTML output flag a more descriptive name 
-- Fix the hard-coded txt trace file 
-- Post-state variable assertions are a weird little gotcha? 
-- Unclear what the meaning / types of the values bound by 'take' are? 
+- The debug mode at the moment is extremely rudimentary
+- Give the HTML output flag a more descriptive name
+- Fix the hard-coded txt trace file
+- Post-state variable assertions are a weird little gotcha? ie. can't assert
+  properties of a variable in the post-state, but only the return value.
+- Unclear what the meaning / types of the values bound by 'take' are? UPDATE: I
+  think I understand this now.
 */
 
 // A main() function that does nothing. This can't fault, and therefore requires
-// no CN annotations. 
+// no CN annotations.
 
-int main() {
-    return 0;
+int main()
+{
+  return 0;
 }
 
 // A function that adds two numbers together. This can overflow, but we can add
 // a requires-clause that enforces that x and y are both zero. This makes the
-// function trivially non-faulting. 
+// function trivially non-faulting.
 
-signed int add_1(signed int x, signed int y) 
+signed int add_1(signed int x, signed int y)
 /*@ requires x == 0; y == 0 @*/
-/*@ ensures return == {x}@start + {y}@start @*/
-// /*@ ensures return == x + y @*/ // <-- equivalent???
-
-{ 
-    signed int i; 
-    i = x + y; 
-    return i; 
+/*@ ensures return == x + y @*/
+// /*@ ensures return == {x}@start + {y}@start @*/  // <-- equivalent???
+{
+  signed int i;
+  i = x + y;
+  return i;
 }
 
 // This function is also trivially non-faulting if we only require one integer
-// to be zero. 
+// to be zero.
 
-signed int add_2(signed int x, signed int y) 
+signed int add_2(signed int x, signed int y)
 /*@ requires x == 0 @*/
 /*@ ensures return == x + y @*/
-// 
-{ 
-    signed int i; 
-    i = x + y; 
-    return i; 
+{
+  signed int i;
+  i = x + y;
+  return i;
 }
 
-// This is the example from the paper. We need to constrain the value of i so
-// that it cannot overflow. 
+// Verifying the addition function for arbitrary inputs requires that the total
+// cannot overflow.
+
+signed int add_3(signed int x, signed int y)
+/*@ requires (0 - power(2,31)) <= x + y;  x + y < power(2,31) @*/
+/*@ ensures return == x + y @*/
+{
+  signed int i;
+  i = x + y;
+  return i;
+}
+
+// Verifying unsigned integer addition. Note we don't need to add a lower bound
+// any more.
+
+unsigned int add_4(unsigned int x, unsigned int y)
+/*@ requires x + y < power(2,31) @*/
+/*@ ensures return == x + y @*/
+{
+  signed int i;
+  i = x + y;
+  return i;
+}
+
+// This is the example from the paper. Here we show that the value stored in
+// memory is correctly incremented.
 
 signed int inc_1(signed int i)
 /*@ requires i < power(2,31) - 1 @*/
-/*@ ensures return == {i}@start + 1 @*/
+/*@ ensures return == i + 1 @*/
 {
-    i = i + 1;
-    return i;
-} 
-
-// Verifying the addition function for arbitrary inputs requires that x and y
-// are both non-negative and the total cannot overflow. 
-
-signed int add_3(signed int x, signed int y) 
-/*@ requires 0 <= x; 0 <= y @*/ // <-- Uncertain why this is necessary? 
-/*@ requires x + y < power(2,31) @*/
-/*@ ensures return == {x}@start + {y}@start @*/
-{ 
-    signed int i; 
-    i = x + y; 
-    return i; 
+  i = i + 1;
+  return i;
 }
 
-// Modified example from the paper written by OliverB. Note that the syntax in
-// the CN paper is wrong. 
+// Modified example from the paper, written by OliverB. This example shows how
+// CN can work with struct types.
 
-struct s {
-    int x; 
-    int y;
+struct s
+{
+  int x;
+  int y;
 };
 
 void zero_y_1(struct s *p)
-/*@ requires take OP  = Owned(p) @*/
-/*@ ensures  take OP2 = Owned(p) @*/
-/*@ ensures  OP2.x == OP.x @*/
-/*@ ensures  OP2.y == 0 @*/
+/*@ requires take StructPre  = Owned<struct s>(p) @*/
+/*@ ensures  take StructPost = Owned<struct s>(p) @*/
+/*@ ensures  StructPre.x == StructPost.x @*/
+/*@ ensures  StructPost.y == 0 @*/
 {
-    p->y = 0;
-    // p->x = 7;  // <-- This would fail 
+  p->y = 0;
+  // p->x = 7;  // <-- This would fail
 }
 
-// A function that swaps values. 
+// DOESN'T WORK: In the POPL paper, there was some kind of field override
+// syntax, but this seems to be broken at the moment.
 
-void swap_1(int *a, int *b) 
-/*@ requires take Pa = Owned(a) @*/ 
+// void zero_y_2(struct s *p)
+// /*@ requires take StructPre  = Owned<struct s>(p) @*/
+// /*@ ensures  take StructPost = Owned<struct s>(p) @*/
+// /*@ ensures  StructPost == StructPre{.y = 0} @*/ // <-- Keep everything the same except field y.
+// {
+//   p->y = 0;
+// }
+
+// This examples swaps the values stored in *a and *b, via a temporary variable
+
+void swap_1(int *a, int *b)
+/*@ requires take Pa = Owned(a) @*/
 /*@ requires take Pb = Owned(b) @*/
 /*@ ensures take Qa = Owned(a) @*/
 /*@ ensures take Qb = Owned(b) @*/
 /*@ ensures Qb == Pa @*/
 /*@ ensures Qa == Pb @*/
 {
-    int temp = *a; 
-    *a = *b;
-    // *a = 0;  // <-- This would fail 
-    *b = temp;
+  int temp = *a;
+  *a = *b;
+  // *a = 0;  // <-- This would fail
+  *b = temp;
 }
 
-// We can prove normal properties of straight-line code. Note that inline
-// assertions are supported, but that they seem to use the standard C syntax for
-// boolean assertions rather than CN's syntax. 
+// Inline assertions are supported, but that they seem to use the standard C
+// syntax for boolean assertions rather than CN's syntax.
 
-int assign_1 (int x) 
-/*@ requires x == 7 @*/ 
+int assert_1(int x)
+/*@ requires x == 7 @*/
 /*@ ensures return == 0 @*/
-{ 
-  x = 0; 
-  assert (x == 0); 
-  return(x); 
-} 
+{
+  x = 0;
+  assert(x == 0);
+  return (x);
+}
 
-// Note that it seems like the variables x / y are bound at the start of the
-// function, even in the ensures clauses. So this doesn't work: 
+// This alternative syntax for assertion also works:
 
-// void assign_2 (int x) 
-// /*@ requires x == 7 @*/ 
+int assert_2(int x)
+/*@ requires x == 7 @*/
+/*@ ensures return == 0 @*/
+{
+  x = 0;
+  /*@ assert(x == 0) @*/
+  return (x);
+}
+
+// We can assert properties about memory cells as well. I guess CN is checking
+// these by symbolic simulation over the Cerberus semantics
+
+void inline_assert_1(int *x, int *y)
+/*@ requires take Xpre = Owned<int>(x) @*/
+/*@ requires take Ypre = Owned<int>(y) @*/
+/*@ requires *x == 7; *y == 7 @*/
+/*@ ensures take Xpost = Owned<int>(x) @*/
+/*@ ensures take Ypost = Owned<int>(y) @*/
+/*@ ensures *x == 0; *y == 0 @*/
+{
+  *x = 0;
+  /*@ assert(*x == 0 && *y == 7) @*/
+  // /*@ assert take Xmid = Owned<int>(x) @*/ <-- Doesn't parse, can't use CN syntax here
+  // /*@ assert *x == 0; *y == 7 @*/ // <-- Doesn't parse, can't use CN syntax here
+  *y = 0;
+}
+
+// Variables x / y are bound at the start of the function, even in the ensures
+// clauses. So we can't assert properties of stack variables in the post-state.
+
+// For example, this doesn't work:
+
+// void assign_2 (int x)
+// /*@ requires x == 7 @*/
 // /*@ ensures x == 0 @*/
-// { 
-//   x = 0; 
-// } 
+// {
+//   x = 0;
+// }
 
 // On the other hand, we can assert properties of the post-state easily if the
-// values are locations in memory, and the function takes pointers  
+// values are locations in memory
 
-void assign_ptr_1 (int *x, int *y) 
+void assign_ptr_1(int *x, int *y)
 /*@ requires take Xpre = Owned<int>(x) @*/
 /*@ requires take Ypre = Owned<int>(y) @*/
 /*@ requires *x == 7; *y == 7 @*/
 /*@ ensures take Xpost = Owned<int>(x) @*/
 /*@ ensures take Ypost = Owned<int>(y) @*/
 /*@ ensures *x == 0; *y == 0 @*/
-{ 
-  *x = 0; 
-  *y = 0; 
-} 
+{
+  *x = 0;
+  *y = 0;
+}
 
-// We can assert properties inline about memory cells as well. We don't need
-// ownership assertions here for some reason? I guess this is because these are
-// only required wherever they could be ambiguous, ie. at control-flow and fn
-// interfaces?? 
+// An example with a terminating loop. Note we don't need an invariant here
+// because the loop exit condition implies the postcondition
 
-void inline_assert_1 (int *x, int *y) 
-/*@ requires take Xpre = Owned<int>(x) @*/
-/*@ requires take Ypre = Owned<int>(y) @*/
-/*@ requires *x == 7; *y == 7 @*/
-/*@ ensures take Xpost = Owned<int>(x) @*/
-/*@ ensures take Ypost = Owned<int>(y) @*/
-/*@ ensures *x == 0; *y == 0 @*/
-{ 
-  *x = 0; 
-  assert (*x == 0 && *y == 7);  // Assertions are checked during verification 
-  // /*@ assert take Xmid = Owned<int>(x) @*/ <-- Doesn't parse 
-  // /*@ assert *x == 0; *y == 0 @*/ // <-- Doesn't parse
-  *y = 0; 
-} 
+int loop_1()
+/*@ ensures return == 7 @*/
+{
+  int i = 0;
+  while (i != 7)
+  {
+    // Don't do anything
+  };
+  return i;
+}
 
+// An example with a non-terminating loop. This is a partial-correctness logic,
+// so a proof doesn't imply termination.
+
+void loop_2()
+/*@ ensures false @*/
+{
+  int i = 0;
+  while (i < 10)
+  /*@ inv i == 0 @*/ // <-- exit condition never satisfied
+  {
+    // Don't do anything
+  };
+}
 
 // A linked list of integers -- struct def and recursive predicate. Taken from:
-// https://github.com/rems-project/cerberus/blob/master/tests/cn/append.c 
+// https://github.com/rems-project/cerberus/blob/master/tests/cn/append.c
 
-struct int_list { 
+struct node_int_list
+{
   int val;
-  struct int_list* next;
+  struct node_int_list *next;
 };
 
 /*@
-datatype seq { 
+// The specification-level type definition for a sequence. We use this to
+// represent the contents of the list.
+datatype seq {
   Seq_Nil {},
   Seq_Cons {integer val, datatype seq next}
 }
 
+// The predicate representing an in-memory list segment. Note that the return
+// value of this predicate is the specification-level contents of the list, i.e
+// a pure sequence of values.
 predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
-  if (addr_eq(p,tail)) { 
+  if (addr_eq(p,tail)) {
     return Seq_Nil{};
-  } else { 
-    take H = Owned<struct int_list>(p);
+  } else {
+    take H = Owned<struct node_int_list>(p);
     assert (is_null(H.next) || (integer)H.next != 0);
     take tl = IntListSeg(H.next, tail);
     return (Seq_Cons { val: H.val, next: tl });
@@ -204,193 +276,316 @@ predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
 }
 @*/
 
-// A function on lists that does nothing 
+// A function on lists that does nothing. Note we don't need an inductive lemma
+// here because the precondition is preserved by the frame rule.
 
-struct int_list* list_do_nothing( struct int_list *xs ) 
+struct node_int_list *list_1(struct node_int_list *xs)
 /*@ requires take Xs = IntListSeg(xs,NULL) @*/
 /*@ ensures take Ys = IntListSeg(return,NULL) @*/
 /*@ ensures Ys == Xs @*/
-{ 
-    struct int_list *ys; 
-    ys = xs; 
-    return ys; 
+{
+  struct node_int_list *ys;
+  ys = xs;
+  return ys;
 }
 
+// A fancier example. This function walks the list and assigns 7 to the value
+// field of every node. (Proof written by CPulte and modified by MDD.)
+
+/*@
+// A lemma saying that a list segment followed by a list node can be
+// folded into a list segment. Note that this lemma is assumed in CN
+// and would have to be proved separately in Coq
+
+lemma IntListSeqSnoc(pointer p, pointer tail)
+  requires take l1 = IntListSeg(p, tail);
+           take v = Owned<struct node_int_list>(tail)
+  ensures take l2 = IntListSeg(p, v.next)
+@*/
+
+void list_2(struct node_int_list *head)
+/*@ requires take Xs = IntListSeg(head,NULL) @*/
+/*@ ensures take Ys = IntListSeg(head,NULL) @*/
+{
+  struct node_int_list *curr;
+  curr = head;
+
+  while (curr != 0)
+  /*@ inv take Visited = IntListSeg(head,curr) @*/
+  /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
+  /*@ inv {head}unchanged @*/
+  /*@ inv let i_curr = curr @*/
+  {
+    curr->val = 7;
+    curr = curr->next;
+    /*@ apply IntListSeqSnoc(head, i_curr) @*/
+  }
+  return;
+}
+
+/*@
+// This append function exists at the specification level
+
+function [rec] (datatype seq) append(datatype seq xs, datatype seq ys) {
+  match xs {
+    Seq_Nil {} => {
+      ys
+    }
+    Seq_Cons {val : h, next : zs}  => {
+      Seq_Cons {val: h, next: append(zs, ys)}
+    }
+  }
+}
+
+// This lemma must be proved inductively in Coq
+
+lemma IntListSeqSnocVal(pointer p, pointer tail)
+  requires take l1 = IntListSeg(p, tail);
+           take v = Owned<struct node_int_list>(tail)
+  ensures take l2 = IntListSeg(p, v.next);
+          l2 == append(l1, Seq_Cons { val: v.val, next: Seq_Nil {} })
+@*/
+
+void list_3(struct node_int_list *head)
+/*@ requires take Xs = IntListSeg(head,NULL) @*/
+/*@ ensures take Ys = IntListSeg(head,NULL) @*/
+{
+  struct node_int_list *curr;
+  curr = head;
+
+  while (curr != 0)
+  /*@ inv take Visited = IntListSeg(head,curr) @*/
+  /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
+  /*@ inv {head}unchanged @*/
+  /*@ inv let i_curr = curr @*/
+  {
+    curr->val = 7;
+    curr = curr->next;
+    /*@ apply IntListSeqSnocVal(head, i_curr) @*/
+  }
+  return;
+}
 
 // From the paper. Here power_uf(-,-) is an uninterpreted function. We use a
-// lemma to allow CN to reason about this function. 
+// lemma to allow CN to reason about this function.
 
-void lemma_power2_def(int y) 
+void lemma_power2_def(int y)
 /*@ trusted @*/
 /*@ requires y >= 0 @*/
 /*@ ensures (power_uf(2,y+1)) == (2 * power_uf(2,y)) @*/
 /*@ ensures (power_uf(2,0)) == 1 @*/
-{}
-
-int power2_1() 
-/*@ ensures return == power_uf(2,0) @*/
 {
-    int i = 0; 
-    int pow = 1; 
-    lemma_power2_def(i); 
-    return pow; 
 }
 
-// int power2_2(int y) 
-// /*@ requires 0 < y; y < 31 @*/
-// // /*@ ensures return == power_uf(2,y) @*/
+int power2_1()
+/*@ ensures return == power_uf(2,0) @*/
+{
+  int i = 0;
+  int pow = 1;
+  lemma_power2_def(i);
+  return pow;
+}
+
+int power2_2(int y)
+/*@ requires 0 < y; y <= 32 @*/
+/*@ ensures return == power_uf(2,1) @*/
+{
+  int i = 0;
+  int pow = 1;
+  lemma_power2_def(i);
+
+  /*@ assert (0 <= y && y <= 32) @*/
+  /*@ assert (0 <= i && i <= y) @*/
+  /*@ assert (pow == power_uf(2,i)) @*/
+  /*@ assert (0 < pow && pow < power(2,32)) @*/
+  pow = pow * 2;
+  i = i + 1;
+  // lemma_power2_def(i);
+
+  /*@ assert (pow == power_uf(2,i)) @*/
+  /*@ assert (0 < pow && pow < power(2,32)) @*/
+
+  return pow;
+}
+
+// int power2_3(int y)
+// /*@ requires 0 < y; y <= 32 @*/
+// /*@ ensures return == power_uf(2,y) @*/
 // {
-//     int i = 0; 
-//     int pow = 1; 
-//     lemma_power2_def(i); 
+//     int i = 0;
+//     int pow = 1;
+//     lemma_power2_def(i);
 
-//     while (i <= y) 
-//     /*@ inv 0 < i; i <= y @*/
+//     while (i < y)
+//     /*@ inv 0 <= i; i <= y @*/
+//     /*@ inv 0 <= y; y <= 32 @*/
 //     /*@ inv pow == power_uf(2,i) @*/
-//     { 
-//         pow = pow * 2; 
-//         i = i + 1; 
-//         lemma_power2_def(i); 
-//     }
-//     return pow; 
-// }
+//     /*@ inv 0 < pow; pow < power(2,32) @*/
+//     {
+//         pow = pow * 2;
+//         lemma_power2_def(i);
+//         i = i + 1;
+//     };
 
+//     return pow;
+// }
 
 // malloc() doesn't work. This isn't too surprising since it's strictly
 // speaking a library function. But I wonder what the specification of that
-// function should be? 
+// function should be?
 
-// void malloc_1() 
-// /*@ ensures take New = Owned<int>(return) @*/
-// {
-//     int *new; 
-//     new = malloc(sizeof(int)); 
-//     return new; 
-// }
+// We can define a fake malloc() function that only works on ints
 
-// We can define a fake malloc() function that only works on ints 
-
-int* my_malloc_int()
+int *my_malloc_int()
 /*@ trusted @*/
-/*@ ensures take New = Owned<int>(return)@*/
-{}
+/*@ ensures take New = Owned<int>(return) @*/
+{
+}
 
-int* malloc_assign_1()
-/*@ ensures take New = Owned<int>(return)@*/
+int *malloc_1()
+/*@ ensures take New = Owned<int>(return) @*/
+{
+  int *new;
+  new = my_malloc_int();
+  return new;
+}
+
+int *malloc_2()
+/*@ ensures take New = Owned<int>(return) @*/
 /*@ ensures *return == 7 @*/
 {
-    int *new; 
-    new = my_malloc_int(); 
-    *new = 7; 
-    return new; 
+  int *new;
+  new = my_malloc_int();
+  *new = 7;
+  return new;
 }
 
+// free() is also not defined, but we can fake it
 
-// free() is also not defined, which is a bit more surprising. This example
-// gives the following error: 
-//    > tutorial.c:292:5: error: use of undeclared identifier 'free'
-
-// void free_1( int* x, int *y )
-// /*@ requires take Xpre = Owned<int>(x) @*/
-// /*@ requires take Ypre = Owned<int>(y) @*/
-// /*@ ensures take Ypost = Owned<int>(y) @*/
-// {
-//     free(x); 
-// }
-
-
-
-// We can use the 'extract' keyword to cast a piece of memory into another type.
-// This example modified from
-// https://github.com/rems-project/cerberus/blob/master/tests/cn/swap_pair.c 
-
-void extract_test_1(unsigned long int *pair_p, int i, int n) 
-/*@ requires take pairStart = each (integer j; 0 <= j && j < n) 
-                                {Owned(pair_p + j)} @*/
-/*@ requires n > i; i >= 0 @*/ 
-/*@ ensures take pairEnd = each (integer j; 0 <= j && j < n) 
-                                {Owned(pair_p + j)} @*/
+void my_free_int(int *target)
+/*@ trusted @*/
+/*@ requires take ToFree = Owned<int>(target) @*/
 {
-    /*@ extract Owned<unsigned long int>, i @*/ // <-- required to read / write 
-    unsigned long int tmp = pair_p[i];
-    pair_p[i] = 7; 
 }
 
+void free_1(int *x, int *y)
+/*@ requires take Xpre = Owned<int>(x) @*/
+/*@ requires take Ypre = Owned<int>(y) @*/
+/*@ ensures take Ypost = Owned<int>(y) @*/
+{
+  my_free_int(x);
+}
 
+// We can use the 'extract' keyword to cast an owned piece of memory into
+// another type. This example modified from
+// https://github.com/rems-project/cerberus/blob/master/tests/cn/swap_pair.c
 
+// This code takes an array of ints at *array_p and writes 7 to the n-th element
 
+void extract_test_1(unsigned long int *array_p, int off, int n)
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ requires 0 <= off; off < n @*/
+/*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ ensures  arrayEnd[off] == 7 @*/
+{
+  /*@ extract Owned<unsigned long int>, off @*/ // <-- required to read / write
+  array_p[off] = 7;
+}
+
+void extract_test_2(unsigned long int *array_p, int off, int n)
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ requires 0 <= off; off < n @*/
+/*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ ensures  arrayEnd[off] == 7 @*/
+{
+  /*@ extract Owned<unsigned long int>, off @*/ // <-- required to read / write
+  unsigned long int tmp = array_p[off];
+
+  array_p[off] = 7;
+}
+
+// void extract_test_2(unsigned long int *array_p, int i, int n)
+// /*@ requires take arrayStart = each (integer j; 0 <= j && j < n)
+//                                 {Owned(array_p + j)} @*/
+// /*@ requires arrayStart[i] < power(2,31) - 1 @*/
+// /*@ requires n > i; i >= 0 @*/
+// /*@ ensures take arrayEnd = each (integer j; 0 <= j && j < n)
+//                                 {Owned(array_p + j)} @*/
+// /*@ ensures arrayEnd[i] == arrayStart[i] @*/
+// {
+//     /*@ extract Owned<unsigned long int>, i @*/ // <-- required to read / write
+//     unsigned long int tmp = array_p[i];
+//     array_p[i] = tmp;
+// }
 
 /*===================================================================*/
 /* Old broken stuff below...                                         */
 /*===================================================================*/
 
-// void list_walk( struct int_list *head) 
+// void list_walk( struct node_int_list *head)
 // /*@ requires take Xs = IntListSeg(head,NULL) @*/
 // /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 // {
-//     struct int_list *curr; 
-//     curr = head; 
+//     struct node_int_list *curr;
+//     curr = head;
 
-//     while (curr != 0) 
+//     while (curr != 0)
 //     /*@ inv take Visited = IntListSeg(head,curr) @*/
 //     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
-//     { 
-//         curr = curr->next; 
+//     {
+//         curr = curr->next;
 //     }
-//     return;  
+//     return;
 // }
 
-
-// void list_set_to_7( struct int_list *head) 
+// void list_set_to_7( struct node_int_list *head)
 // /*@ requires take Xs = IntListSeg(head,NULL) @*/
 // /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 // {
-//     struct int_list *curr; 
-//     curr = head; 
+//     struct node_int_list *curr;
+//     curr = head;
 
-//     while (curr != 0) 
+//     while (curr != 0)
 //     /*@ inv take Visited = IntListSeg(head,curr) @*/
 //     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
-//     { 
-//         curr->val = 7; 
-//         curr = curr->next; 
+//     {
+//         curr->val = 7;
+//         curr = curr->next;
 //     }
-//     return;  
+//     return;
 // }
 
-// // A list reverse function - TODO 
+// // A list reverse function - TODO
 
-// struct int_list* list_reverse( struct int_list *head ) 
+// struct node_int_list* list_reverse( struct node_int_list *head )
 // /*@ requires take Xs = IntList(head) @*/
 // /*@ ensures take Ys = IntList(return) @*/
-// { 
-//     struct int_list *curr; 
-//     curr = head; 
+// {
+//     struct node_int_list *curr;
+//     curr = head;
 
-//     struct int_list *prev;
-//     prev = 0; 
-//     struct int_list *next; 
-//     next = 0; 
+//     struct node_int_list *prev;
+//     prev = 0;
+//     struct node_int_list *next;
+//     next = 0;
 
-//     // while (curr != 0) { 
-//     //     next = curr->next; 
-//     //     curr->next = prev; 
-//     //     prev = curr; 
-//     //     curr = next; 
+//     // while (curr != 0) {
+//     //     next = curr->next;
+//     //     curr->next = prev;
+//     //     prev = curr;
+//     //     curr = next;
 //     // }
 //     curr = prev;
-//     return curr; 
+//     return curr;
 // }
 
-
 // predicate (datatype seq) IntList(pointer p) {
-//   if (is_null(p)) { 
+//   if (is_null(p)) {
 //     return Seq_Nil{};
-//   } else { 
-//     take H = Owned<struct int_list>(p);
+//   } else {
+//     take H = Owned<struct node_int_list>(p);
 //     assert (is_null(H.next) || (integer)H.next != 0);
 //     take tl = IntList(H.next);
 //     return (Seq_Cons { val: H.val, next: tl });
 //   }
 // }
-
