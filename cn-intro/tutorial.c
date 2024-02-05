@@ -4,7 +4,7 @@
 // CN Manual (WIP): https://github.com/rems-project/cerberus/blob/master/backend/cn/manual/manual.md
 
 /*
-MDD questions:
+MDD gripes / questions:
 - Is there a way to add inline assertions?  UPDATE: Yes! You can write 'assert
   <something>', or comment it using the CN syntax. But there's no particular
   magic about this - it seems to just be a wrapper around the normal C assert
@@ -20,6 +20,8 @@ MDD questions:
   hard-coded
 - confused by the {x}@start notation? UPDATE: seems to deprecated now.
 - What does free look like? Malloc?
+- Confused by the 'extract' operation? How does it know which resource to access?
+- V. confusing error message without the 'unchanged' modifier on invariants
 
 Suggestions / warts:
 - It would be great to just get syntax highlighting working on the CN portions
@@ -48,7 +50,7 @@ int main()
 signed int add_1(signed int x, signed int y)
 /*@ requires x == 0; y == 0 @*/
 /*@ ensures return == x + y @*/
-// /*@ ensures return == {x}@start + {y}@start @*/  // <-- equivalent???
+/*@ ensures return == {x}@start + {y}@start @*/ // <-- equivalent???
 {
   signed int i;
   i = x + y;
@@ -71,6 +73,7 @@ signed int add_2(signed int x, signed int y)
 // cannot overflow.
 
 signed int add_3(signed int x, signed int y)
+// Note the lower and upper bounds here:
 /*@ requires (0 - power(2,31)) <= x + y;  x + y < power(2,31) @*/
 /*@ ensures return == x + y @*/
 {
@@ -128,6 +131,7 @@ void zero_y_1(struct s *p)
 // /*@ requires take StructPre  = Owned<struct s>(p) @*/
 // /*@ ensures  take StructPost = Owned<struct s>(p) @*/
 // /*@ ensures  StructPost == StructPre{.y = 0} @*/ // <-- Keep everything the same except field y.
+//                                                         [CURRENTLY DOESN'T WORK]
 // {
 //   p->y = 0;
 // }
@@ -244,7 +248,83 @@ void loop_2()
   };
 }
 
-// A linked list of integers -- struct def and recursive predicate. Taken from:
+// An example with a more interesting loop
+
+int loop_3(int i)
+/*@ requires 0 <= i; i < power(2,31) @*/
+{
+  int n = 0;
+  int acc = 0;
+
+  while (n != i)
+  /*@ inv n <= i @*/
+  /*@ inv 0 <= acc; acc <= n @*/
+  {
+    acc = n - acc;
+    n++;
+  };
+  return acc;
+}
+
+// A finitely bounded loop. Note that CN won't prove this without the invariant,
+// although actually we could definitely BMC it using Crucible.
+
+int loop_4()
+/*@ ensures return == 1 @*/
+{
+  int n = 0;
+  int acc = 0;
+
+  while (n < 1)
+  /*@ inv (n == 0 && acc == 0)
+          ||
+          (n == 1 && acc == 1) @*/
+  {
+    n++;
+    acc++;
+  };
+  return acc;
+}
+
+// A function that writes 7 into a given offset in an array of size n
+
+void array_write_1(int *arr, int size, int off)
+/*@ requires 0 <= off; off < size @*/
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < size) {Owned(arr + j)} @*/
+/*@ ensures take arrayEnd = each (integer j; 0 <= j && j < size) {Owned(arr + j)} @*/
+{
+  int i = off;
+  /*@ extract Owned<int>, i @*/ // <-- required to read / write
+  // TODO: how does this know which ownership predicate to bind to?
+  arr[off] = 7;
+  i++;
+  return;
+}
+
+// A function that writes 7 into all positions in an array of size n. This
+// version of the proof doesn't establish that the resulting array contains
+// all 7
+
+void array_write_2(int *arr, int n)
+/*@ requires 0 < n @*/
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+/*@ ensures take arrayEnd = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+{
+  int i = 0;
+  while (i < n)
+  /*@ inv {n}unchanged; {arr}unchanged @*/ // TODO: unclear why this is necessary?
+  /*@ inv 0 <= i; i <= n @*/
+  /*@ inv take arrayInv = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+  {
+    /*@ extract Owned<int>, i @*/ // <-- required to read / write
+    *(arr + i) = 7;
+    i++;
+  };
+  return;
+}
+
+// A data-structure representing nodes from a linked list of integers -- struct
+// def and recursive predicate. Adapted from:
 // https://github.com/rems-project/cerberus/blob/master/tests/cn/append.c
 
 struct node_int_list
@@ -256,6 +336,7 @@ struct node_int_list
 /*@
 // The specification-level type definition for a sequence. We use this to
 // represent the contents of the list.
+
 datatype seq {
   Seq_Nil {},
   Seq_Cons {integer val, datatype seq next}
@@ -264,6 +345,7 @@ datatype seq {
 // The predicate representing an in-memory list segment. Note that the return
 // value of this predicate is the specification-level contents of the list, i.e
 // a pure sequence of values.
+
 predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
   if (addr_eq(p,tail)) {
     return Seq_Nil{};
@@ -295,7 +377,8 @@ struct node_int_list *list_1(struct node_int_list *xs)
 /*@
 // A lemma saying that a list segment followed by a list node can be
 // folded into a list segment. Note that this lemma is assumed in CN
-// and would have to be proved separately in Coq
+// and would have to be proved separately in Coq.
+// MDD note: I don't think this can currently be proved ...
 
 lemma IntListSeqSnoc(pointer p, pointer tail)
   requires take l1 = IntListSeg(p, tail);
@@ -337,7 +420,7 @@ function [rec] (datatype seq) append(datatype seq xs, datatype seq ys) {
   }
 }
 
-// This lemma must be proved inductively in Coq
+// This lemma is assumed by CN and must be proved inductively in Coq.
 
 lemma IntListSeqSnocVal(pointer p, pointer tail)
   requires take l1 = IntListSeg(p, tail);
@@ -438,7 +521,7 @@ int power2_2(int y)
 
 int *my_malloc_int()
 /*@ trusted @*/
-/*@ ensures take New = Owned<int>(return) @*/
+/*@ ensures take New = Block<int>(return) @*/
 {
 }
 
@@ -447,6 +530,7 @@ int *malloc_1()
 {
   int *new;
   new = my_malloc_int();
+  *new = 7; // Have to initialize the memory before it's owned
   return new;
 }
 
