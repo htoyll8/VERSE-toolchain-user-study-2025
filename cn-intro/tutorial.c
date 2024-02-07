@@ -33,6 +33,8 @@ Suggestions / warts:
   properties of a variable in the post-state, but only the return value.
 - Unclear what the meaning / types of the values bound by 'take' are? UPDATE: I
   think I understand this now.
+- Unclear how extract works?
+- Unhelpful error message when unchanged is missed
 */
 
 // A main() function that does nothing. This can't fault, and therefore requires
@@ -323,14 +325,38 @@ void array_write_2(int *arr, int n)
   return;
 }
 
+// Same code, new proof. This version of the proof establishes that the whole
+// array is written to 7. This is an example of how quantification works over
+// pure values.
+
+void array_write_3(int *arr, int n)
+/*@ requires 0 < n @*/
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+/*@ ensures take arrayEnd = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+/*@ ensures each (integer j; 0 <= j && j < n) {arrayEnd[j] == 7} @*/ // <-- NEW
+{
+  int i = 0;
+  while (i < n)
+  /*@ inv {n}unchanged; {arr}unchanged @*/
+  /*@ inv 0 <= i; i <= n @*/
+  /*@ inv take arrayInv = each (integer j; 0 <= j && j < n) {Owned<int>(arr + j)} @*/
+  /*@ inv each (integer j; 0 <= j && j < i) {arrayInv[j] == 7} @*/ // NEW
+  {
+    /*@ extract Owned<int>, i @*/ // <-- required to read / write
+    *(arr + i) = 7;
+    i++;
+  };
+  return;
+}
+
 // A data-structure representing nodes from a linked list of integers -- struct
 // def and recursive predicate. Adapted from:
 // https://github.com/rems-project/cerberus/blob/master/tests/cn/append.c
 
-struct node_int_list
+struct list_node
 {
   int val;
-  struct node_int_list *next;
+  struct list_node *next;
 };
 
 /*@
@@ -350,7 +376,7 @@ predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
   if (addr_eq(p,tail)) {
     return Seq_Nil{};
   } else {
-    take H = Owned<struct node_int_list>(p);
+    take H = Owned<struct list_node>(p);
     assert (is_null(H.next) || (integer)H.next != 0);
     take tl = IntListSeg(H.next, tail);
     return (Seq_Cons { val: H.val, next: tl });
@@ -361,12 +387,12 @@ predicate (datatype seq) IntListSeg(pointer p, pointer tail) {
 // A function on lists that does nothing. Note we don't need an inductive lemma
 // here because the precondition is preserved by the frame rule.
 
-struct node_int_list *list_1(struct node_int_list *xs)
+struct list_node *list_1(struct list_node *xs)
 /*@ requires take Xs = IntListSeg(xs,NULL) @*/
 /*@ ensures take Ys = IntListSeg(return,NULL) @*/
 /*@ ensures Ys == Xs @*/
 {
-  struct node_int_list *ys;
+  struct list_node *ys;
   ys = xs;
   return ys;
 }
@@ -382,15 +408,15 @@ struct node_int_list *list_1(struct node_int_list *xs)
 
 lemma IntListSeqSnoc(pointer p, pointer tail)
   requires take l1 = IntListSeg(p, tail);
-           take v = Owned<struct node_int_list>(tail)
+           take v = Owned<struct list_node>(tail)
   ensures take l2 = IntListSeg(p, v.next)
 @*/
 
-void list_2(struct node_int_list *head)
+void list_2(struct list_node *head)
 /*@ requires take Xs = IntListSeg(head,NULL) @*/
 /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 {
-  struct node_int_list *curr;
+  struct list_node *curr;
   curr = head;
 
   while (curr != 0)
@@ -424,16 +450,16 @@ function [rec] (datatype seq) append(datatype seq xs, datatype seq ys) {
 
 lemma IntListSeqSnocVal(pointer p, pointer tail)
   requires take l1 = IntListSeg(p, tail);
-           take v = Owned<struct node_int_list>(tail)
+           take v = Owned<struct list_node>(tail)
   ensures take l2 = IntListSeg(p, v.next);
           l2 == append(l1, Seq_Cons { val: v.val, next: Seq_Nil {} })
 @*/
 
-void list_3(struct node_int_list *head)
+void list_3(struct list_node *head)
 /*@ requires take Xs = IntListSeg(head,NULL) @*/
-/*@ ensures take Ys = IntListSeg(head,NULL) @*/
+/*@ ensures  take Ys = IntListSeg(head,NULL) @*/
 {
-  struct node_int_list *curr;
+  struct list_node *curr;
   curr = head;
 
   while (curr != 0)
@@ -448,6 +474,63 @@ void list_3(struct node_int_list *head)
   }
   return;
 }
+
+// A list reverse function
+
+// TODO: fix this based on the CN repo example:
+// https://github.com/rems-project/cerberus/blob/master/tests/cn/list_rev01.c
+
+// struct list_node *list_reverse(struct list_node *head) 
+// /*@ requires take ListPre  = IntListSeg(head,NULL) @*/
+// /*@ ensures  take ListPost = IntListSeg(return,NULL) @*/
+// {
+//   struct list_node *curr, *prev, *next;
+//   curr = head;
+//   prev = 0; 
+
+//   while (curr != 0)
+//   /*@ inv take InInv = IntListSeg(curr, NULL) @*/
+//   /*@ inv take RevInv = IntListSeg(prev, NULL) @*/
+//   { //         Line numbers: 
+//     next = curr->next; // L0 
+//     curr->next = prev; // L1
+//     prev = curr;       // L2 
+//     curr = next;       // L3 
+//   }
+//   return prev;
+// }
+
+/* 
+List reverse states: 
+
+- Loop entry point: 
+c
+x -> y -> 0 
+
+p
+0 
+
+- L0: 
+c    n 
+x -> y -> 0 
+
+p
+0 
+
+- L1: 
+n 
+y -> 0 
+
+c 
+x -> 0 
+
+- L2; L3: 
+c
+y -> 0 
+
+p 
+x -> 0 
+*/
 
 // From the paper. Here power_uf(-,-) is an uninterpreted function. We use a
 // lemma to allow CN to reason about this function.
@@ -557,7 +640,9 @@ void free_1(int *x, int *y)
 /*@ requires take Ypre = Owned<int>(y) @*/
 /*@ ensures take Ypost = Owned<int>(y) @*/
 {
+  *x = 7;
   my_free_int(x);
+  // *x = 7; // <-- generates an error
 }
 
 // We can use the 'extract' keyword to cast an owned piece of memory into
@@ -588,29 +673,15 @@ void extract_test_2(unsigned long int *array_p, int off, int n)
   array_p[off] = 7;
 }
 
-// void extract_test_2(unsigned long int *array_p, int i, int n)
-// /*@ requires take arrayStart = each (integer j; 0 <= j && j < n)
-//                                 {Owned(array_p + j)} @*/
-// /*@ requires arrayStart[i] < power(2,31) - 1 @*/
-// /*@ requires n > i; i >= 0 @*/
-// /*@ ensures take arrayEnd = each (integer j; 0 <= j && j < n)
-//                                 {Owned(array_p + j)} @*/
-// /*@ ensures arrayEnd[i] == arrayStart[i] @*/
-// {
-//     /*@ extract Owned<unsigned long int>, i @*/ // <-- required to read / write
-//     unsigned long int tmp = array_p[i];
-//     array_p[i] = tmp;
-// }
-
 /*===================================================================*/
 /* Old broken stuff below...                                         */
 /*===================================================================*/
 
-// void list_walk( struct node_int_list *head)
+// void list_walk( struct list_node *head)
 // /*@ requires take Xs = IntListSeg(head,NULL) @*/
 // /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 // {
-//     struct node_int_list *curr;
+//     struct list_node *curr;
 //     curr = head;
 
 //     while (curr != 0)
@@ -622,11 +693,11 @@ void extract_test_2(unsigned long int *array_p, int off, int n)
 //     return;
 // }
 
-// void list_set_to_7( struct node_int_list *head)
+// void list_set_to_7( struct list_node *head)
 // /*@ requires take Xs = IntListSeg(head,NULL) @*/
 // /*@ ensures take Ys = IntListSeg(head,NULL) @*/
 // {
-//     struct node_int_list *curr;
+//     struct list_node *curr;
 //     curr = head;
 
 //     while (curr != 0)
@@ -639,35 +710,11 @@ void extract_test_2(unsigned long int *array_p, int off, int n)
 //     return;
 // }
 
-// // A list reverse function - TODO
-
-// struct node_int_list* list_reverse( struct node_int_list *head )
-// /*@ requires take Xs = IntList(head) @*/
-// /*@ ensures take Ys = IntList(return) @*/
-// {
-//     struct node_int_list *curr;
-//     curr = head;
-
-//     struct node_int_list *prev;
-//     prev = 0;
-//     struct node_int_list *next;
-//     next = 0;
-
-//     // while (curr != 0) {
-//     //     next = curr->next;
-//     //     curr->next = prev;
-//     //     prev = curr;
-//     //     curr = next;
-//     // }
-//     curr = prev;
-//     return curr;
-// }
-
 // predicate (datatype seq) IntList(pointer p) {
 //   if (is_null(p)) {
 //     return Seq_Nil{};
 //   } else {
-//     take H = Owned<struct node_int_list>(p);
+//     take H = Owned<struct list_node>(p);
 //     assert (is_null(H.next) || (integer)H.next != 0);
 //     take tl = IntList(H.next);
 //     return (Seq_Cons { val: H.val, next: tl });
