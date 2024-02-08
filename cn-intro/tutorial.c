@@ -37,10 +37,12 @@ Suggestions / warts:
 - Unhelpful error message when unchanged is missed
 */
 
+#define NULL ((void *)0)
+
 // A main() function that does nothing. This can't fault, and therefore requires
 // no CN annotations.
 
-int main()
+int ret_zero()
 {
   return 0;
 }
@@ -288,7 +290,129 @@ int loop_4()
   return acc;
 }
 
-// A function that writes 7 into a given offset in an array of size n
+// A loop with a post-condition: 
+
+int loop_5()
+/*@ ensures return == 7 @*/
+{
+  int ret = 0;
+  int i = 0;
+  while (i < 7)
+  /*@ inv ret == i @*/
+  /*@ inv i <= 7 @*/
+  {
+    i = i + 1;
+    ret = i;
+  };
+  return ret;
+}
+
+// A loop with a post-condition and a very big constant: 
+
+int loop_6(int n)
+/*@ ensures return == 789398323 @*/
+{
+  int i = 0;
+  while (i < 789398323)
+  /*@ inv 0 <= i; i <= 789398323 @*/
+  {
+    i = i + 1;
+  };
+  return i;
+}
+
+// The same loop with a symbolic input. TODO: this is broken. 
+
+// int loop_7(int n)
+// /*@ requires 0 < n @*/
+// /*@ ensures return == n @*/
+// {
+//   int i = 0;
+//   while (i < n)
+//   /*@ inv 0 <= i; i <= n @*/
+//   {
+//     i = i + 1;
+//   };
+//   return i;
+// }
+
+// Write into a memory cell
+
+void memory_write_1(int *cell)
+/*@ requires take CellPre = Owned<int>(cell) @*/
+/*@ ensures take CellPost = Owned<int>(cell) @*/
+/*@ ensures CellPost == 7 @*/
+{
+  *cell = 7;
+}
+
+// Write into two memory cells
+
+void memory_write_2(int *cell1, int *cell2)
+/*@ requires take Cell1Pre = Owned<int>(cell1);
+             take Cell2Pre = Owned<int>(cell2) @*/
+/*@ ensures take Cell1Post = Owned<int>(cell1);
+            take Cell2Post = Owned<int>(cell2);
+            Cell1Post == 7; Cell2Post == 8 @*/
+{
+  *cell1 = 7;
+  *cell2 = 8;
+}
+
+// Write to a memory cell through two aliased pointer variables
+
+void memory_write_3(int *cell1, int *cell2)
+/*@ requires take Cell1Pre = Owned<int>(cell1) @*/
+/*@ requires cell1 == cell2 @*/
+/*@ ensures take Cell2Post = Owned<int>(cell2) @*/
+/*@ ensures Cell2Post == 8 @*/
+{
+  *cell1 = 7;
+  assert(*cell1 == 7 && *cell2 == 7);
+  *cell2 = 8;
+  assert(*cell1 == 8 && *cell2 == 8);
+}
+
+// Write to static global memory cells
+
+static int *cell1, *cell2;
+void memory_write_4()
+/*@ accesses cell1; cell2 @*/
+/*@ requires take Cell1Pre = Owned<int>(cell1) @*/
+/*@ requires take Cell2Pre = Owned<int>(cell2) @*/
+/*@ ensures take Cell1Post = Owned<int>(cell1) @*/
+/*@ ensures take Cell2Post = Owned<int>(cell2) @*/
+/*@ ensures Cell1Post == 7; Cell2Post == 8 @*/
+{
+  *cell1 = 7;
+  *cell2 = 8;
+}
+
+// Write into a pair of locations that are adjacent in memory
+
+void memory_write_5(int *pair)
+/*@ requires take Cell1Pre = Owned(pair) @*/
+/*@ requires take Cell2Pre = Owned(pair + 1) @*/
+/*@ ensures take Cell1Post = Owned(pair) @*/
+/*@ ensures take Cell2Post = Owned(pair + 1) @*/
+{
+  pair[0] = 7;
+  pair[1] = 8;
+}
+
+// Same code, but we specify the pair using the `each` keyword
+
+void memory_write_6(int *pair)
+/*@ requires take PairPre = each (integer j; j == 0 || j == 1) {Owned(pair + j)} @*/
+/*@ ensures take PairPost = each (integer j; j == 0 || j == 1) {Owned(pair + j)} @*/
+{
+  /*@ extract Owned<int>, 0 @*/
+  pair[0] = 7;
+  /*@ extract Owned<int>, 1 @*/
+  pair[1] = 8;
+}
+
+// Writes 7 into a given offset in an array of size n
 
 void array_write_1(int *arr, int size, int off)
 /*@ requires 0 <= off; off < size @*/
@@ -475,62 +599,33 @@ void list_3(struct list_node *head)
   return;
 }
 
-// A list reverse function
-
-// TODO: fix this based on the CN repo example:
+// A list reverse function. Compare with:
 // https://github.com/rems-project/cerberus/blob/master/tests/cn/list_rev01.c
 
-// struct list_node *list_reverse(struct list_node *head) 
-// /*@ requires take ListPre  = IntListSeg(head,NULL) @*/
-// /*@ ensures  take ListPost = IntListSeg(return,NULL) @*/
-// {
-//   struct list_node *curr, *prev, *next;
-//   curr = head;
-//   prev = 0; 
+struct list_node *list_reverse_1(struct list_node *head)
+/*@ requires take ListPre  = IntListSeg(head, NULL) @*/
+/*@ ensures  take ListPost = IntListSeg(return, NULL) @*/
+{
+  struct list_node *prev, *next, *curr;
+  curr = head;
 
-//   while (curr != 0)
-//   /*@ inv take InInv = IntListSeg(curr, NULL) @*/
-//   /*@ inv take RevInv = IntListSeg(prev, NULL) @*/
-//   { //         Line numbers: 
-//     next = curr->next; // L0 
-//     curr->next = prev; // L1
-//     prev = curr;       // L2 
-//     curr = next;       // L3 
-//   }
-//   return prev;
-// }
+  prev = 0;
+  next = 0; // TODO: Shouldn't be necessary?  Note that this is also
+            // called out as a FIXME in the CN repo version
 
-/* 
-List reverse states: 
+  while (curr != 0)
+  /*@ inv take InInv = IntListSeg(curr, NULL) @*/
+  /*@ inv take RevInv = IntListSeg(prev, NULL) @*/
+  {
+    next = curr->next;
+    curr->next = prev;
+    prev = curr;
+    curr = next;
+  }
+  return prev;
+}
 
-- Loop entry point: 
-c
-x -> y -> 0 
-
-p
-0 
-
-- L0: 
-c    n 
-x -> y -> 0 
-
-p
-0 
-
-- L1: 
-n 
-y -> 0 
-
-c 
-x -> 0 
-
-- L2; L3: 
-c
-y -> 0 
-
-p 
-x -> 0 
-*/
+// TODO: list reverse code, but prove that it contains the same values
 
 // From the paper. Here power_uf(-,-) is an uninterpreted function. We use a
 // lemma to allow CN to reason about this function.
@@ -651,7 +746,7 @@ void free_1(int *x, int *y)
 
 // This code takes an array of ints at *array_p and writes 7 to the n-th element
 
-void extract_test_1(unsigned long int *array_p, int off, int n)
+void extract_1(unsigned long int *array_p, int off, int n)
 /*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ requires 0 <= off; off < n @*/
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
@@ -661,7 +756,7 @@ void extract_test_1(unsigned long int *array_p, int off, int n)
   array_p[off] = 7;
 }
 
-void extract_test_2(unsigned long int *array_p, int off, int n)
+void extract_2(unsigned long int *array_p, int off, int n)
 /*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ requires 0 <= off; off < n @*/
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
