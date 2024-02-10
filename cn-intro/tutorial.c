@@ -324,20 +324,29 @@ int loop_6(int n)
   return i;
 }
 
-// The same loop with a symbolic input. TODO: this is broken. 
+// The same loop with a symbolic input. 
 
-// int loop_7(int n)
-// /*@ requires 0 < n @*/
-// /*@ ensures return == n @*/
-// {
-//   int i = 0;
-//   while (i < n)
-//   /*@ inv 0 <= i; i <= n @*/
-//   {
-//     i = i + 1;
-//   };
-//   return i;
-// }
+// This proof previously had a subtle bug in it because I omitted the
+// `{n}unchanged property` from the loop invariant. This is okay if what we want
+// is to establish: 
+//   "the return value is equal to the current value of n"
+// But actually, the `ensures` clause requires that 
+//   "the return value is the same as the value of n passed as an argument"
+// This requires we prove that n is unchanged. 
+
+int loop_7(int n)
+/*@ requires 0 < n @*/
+/*@ ensures return == n @*/
+{
+  int i = 0;
+  while (i < n)
+  /*@ inv 0 <= i; i <= n @*/
+  /*@ inv {n}unchanged @*/ // TODO: see above for why this is needed 
+  {
+    i = i + 1;
+  };
+  return i;
+}
 
 // Write into a memory cell
 
