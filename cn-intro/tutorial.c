@@ -1,44 +1,7 @@
-// Some simple CN examples for tutorial purposes
+// Some simple CN examples 
 // Mike Dodds - Galois Inc - January 2024
 
 // CN Manual (WIP): https://github.com/rems-project/cerberus/blob/master/backend/cn/manual/manual.md
-
-/*
-MDD gripes / questions:
-- Is there a way to add inline assertions?  UPDATE: Yes! You can write 'assert
-  <something>', or comment it using the CN syntax. But there's no particular
-  magic about this - it seems to just be a wrapper around the normal C assert
-  command.
-- Is it possible to assert proof-state properties inline? Eg. assert what's
-  currently owned? UPDATE: inline assertions are checked, and these can be
-  enclosed in 'magic comments'. But this is just the same as asserting a
-  concrete fact about the program state. I.e we can't use this for ghost state
-  assertions.
-- What's going on with the 'take' syntax? Something like the inhale / exhale in
-  Dafny? UPDATE: this is 'resource-let' - see the manual
-- How do we get CN to dump out the txt trace? UPDATE: this seems to be
-  hard-coded
-- confused by the {x}@start notation? UPDATE: seems to deprecated now.
-- What does free look like? Malloc?
-- Confused by the 'extract' and 'instantiate' operations? How does it know which
-  resource to access? Why are they necessary? 
-- V. confusing error message without the 'unchanged' modifier on invariants
-- Why no implication in the syntax? 
-- How to universally quantify in the postcondition? 
-
-Suggestions / warts:
-- It would be great to just get syntax highlighting working on the CN portions
-  of the file
-- The debug mode at the moment is extremely rudimentary
-- Give the HTML output flag a more descriptive name
-- Fix the hard-coded txt trace file
-- Post-state variable assertions are a weird little gotcha? ie. can't assert
-  properties of a variable in the post-state, but only the return value.
-- Unclear what the meaning / types of the values bound by 'take' are? UPDATE: I
-  think I understand this now.
-- Unclear how extract works?
-- Unhelpful error message when unchanged is missed
-*/
 
 #define NULL ((void *)0)
 

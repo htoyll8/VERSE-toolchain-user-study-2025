@@ -1,4 +1,7 @@
-// Examples from https://dafny.org/dafny/OnlineTutorial/guide.html
+// Simple CN examples - derived from the Dafny tutorial:  
+// https://dafny.org/dafny/OnlineTutorial/guide.html
+
+// Mike Dodds - Galois Inc - January 2024
 
 struct int_pair
 {
@@ -50,7 +53,7 @@ void max_test()
   assert(v == 7);
 }
 
-// Compute the absolute value a function. 
+// Compute the absolute value a function.
 
 /*@
 function (integer) abs_spec(integer x)
@@ -146,30 +149,76 @@ int abs_stupid(int x)
 //   return b;
 // }
 
-int find(int* a, int length, int key) 
+int find(int *a, int length, int key)
 /*@ requires 0 < length @*/
-/*@ requires take IndexPre = each (integer j; 0 <= j && j < length) 
+/*@ requires take IndexPre = each (integer j; 0 <= j && j < length)
                                   {Owned<int>(a + j)} @*/
-/*@ ensures take IndexPost = each (integer j; 0 <= j && j < length) 
+/*@ ensures take IndexPost = each (integer j; 0 <= j && j < length)
                                   {Owned<int>(a + j)} @*/
 /*@ ensures (return < 0) || (IndexPost[return] == key) @*/
 // TODO: prove that if return == 0, the key isn't present in the index
 /*@ ensures IndexPre == IndexPost @*/
-{ 
-  int idx = 0; 
+{
+  int idx = 0;
 
   while (idx < length)
   /*@ inv {a}unchanged; {length}unchanged; {key}unchanged @*/
   /*@ inv 0 <= idx; idx <= length @*/
-  /*@ inv take IndexInv = each (integer j; 0 <= j && j < length) 
+  /*@ inv take IndexInv = each (integer j; 0 <= j && j < length)
                                {Owned<int>(a + j)} @*/
   /*@ inv IndexInv == IndexPre @*/
   {
     /*@ extract Owned<int>, idx @*/
-    /*@ instantiate good<int>, idx  @*/ // TODO: what does this do? 
-    if( *(a + idx) == key) { return idx; } 
-    idx = idx + 1; 
-  }; 
-  idx = -1; 
-  return idx; 
+    /*@ instantiate good<int>, idx  @*/ // TODO: what does this do?
+    if (*(a + idx) == key)
+    {
+      return idx;
+    }
+    idx = idx + 1;
+  };
+  idx = -1;
+  return idx;
+}
+
+// Binary search algorithm. We can't prove this functionally correct because CN
+// doesn't support universal quantification, which is necessary to establish
+// that the list is sorted. 
+
+int binary_search(int *a, int length, int value)
+/*@ requires 0 <= length @*/
+/*@ requires (2 * length) < power(2,31) @*/
+/*@ requires take IndexPre = each (integer j; 0 <= j && j < length)
+                                  {Owned<int>(a + j)} @*/
+/*@ ensures take IndexPost = each (integer j; 0 <= j && j < length)
+                                  {Owned<int>(a + j)} @*/
+/*@ ensures IndexPost == IndexPre @*/
+{
+  int low = 0;
+  int high = length;
+
+  while (low < high)
+  /*@ inv {a}unchanged; {length}unchanged @*/
+  /*@ inv 0 <= low; low <= high; high <= length @*/
+  /*@ inv (low + high) < power(2,31) @*/
+  /*@ inv take IndexInv = each (integer j; 0 <= j && j < length)
+                               {Owned<int>(a + j)} @*/
+  /*@ inv IndexInv == IndexPre @*/
+  {
+    int mid = (low + high) / 2;
+    /*@ extract Owned<int>, mid @*/
+    /*@ instantiate good<int>, mid  @*/
+    if (a[mid] < value)
+    {
+      low = mid + 1;
+    }
+    else if (value < a[mid])
+    {
+      high = mid;
+    }
+    else if (value == a[mid])
+    {
+      return mid;
+    }
+  };
+  return -1;
 }
