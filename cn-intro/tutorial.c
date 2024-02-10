@@ -20,8 +20,11 @@ MDD gripes / questions:
   hard-coded
 - confused by the {x}@start notation? UPDATE: seems to deprecated now.
 - What does free look like? Malloc?
-- Confused by the 'extract' operation? How does it know which resource to access?
+- Confused by the 'extract' and 'instantiate' operations? How does it know which
+  resource to access? Why are they necessary? 
 - V. confusing error message without the 'unchanged' modifier on invariants
+- Why no implication in the syntax? 
+- How to universally quantify in the postcondition? 
 
 Suggestions / warts:
 - It would be great to just get syntax highlighting working on the CN portions
@@ -752,7 +755,7 @@ void extract_1(unsigned long int *array_p, int off, int n)
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ ensures  arrayEnd[off] == 7 @*/
 {
-  /*@ extract Owned<unsigned long int>, off @*/ // <-- required to read / write
+  /*@ extract Owned<unsigned long int>, off @*/ // <-- required to write
   array_p[off] = 7;
 }
 
@@ -762,56 +765,22 @@ void extract_2(unsigned long int *array_p, int off, int n)
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ ensures  arrayEnd[off] == 7 @*/
 {
-  /*@ extract Owned<unsigned long int>, off @*/ // <-- required to read / write
+  /*@ extract Owned<unsigned long int>, off @*/ 
   unsigned long int tmp = array_p[off];
 
   array_p[off] = 7;
 }
 
-/*===================================================================*/
-/* Old broken stuff below...                                         */
-/*===================================================================*/
+void extract_3(int *array_p, int off, int n)
+/*@ requires take arrayStart = each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ requires 0 <= off; off < n @*/
+/*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
+/*@ ensures  arrayEnd[off] == 7 @*/
+{
+  /*@ extract Owned<int>, off @*/ 
+  /*@ instantiate good<int>, off @*/ // TODO: why is this necessary? 
+  int tmp = array_p[off];
+  if (tmp == 0 && 0 == 1) { return; }; 
 
-// void list_walk( struct list_node *head)
-// /*@ requires take Xs = IntListSeg(head,NULL) @*/
-// /*@ ensures take Ys = IntListSeg(head,NULL) @*/
-// {
-//     struct list_node *curr;
-//     curr = head;
-
-//     while (curr != 0)
-//     /*@ inv take Visited = IntListSeg(head,curr) @*/
-//     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
-//     {
-//         curr = curr->next;
-//     }
-//     return;
-// }
-
-// void list_set_to_7( struct list_node *head)
-// /*@ requires take Xs = IntListSeg(head,NULL) @*/
-// /*@ ensures take Ys = IntListSeg(head,NULL) @*/
-// {
-//     struct list_node *curr;
-//     curr = head;
-
-//     while (curr != 0)
-//     /*@ inv take Visited = IntListSeg(head,curr) @*/
-//     /*@ inv take Remaining = IntListSeg(curr,NULL) @*/
-//     {
-//         curr->val = 7;
-//         curr = curr->next;
-//     }
-//     return;
-// }
-
-// predicate (datatype seq) IntList(pointer p) {
-//   if (is_null(p)) {
-//     return Seq_Nil{};
-//   } else {
-//     take H = Owned<struct list_node>(p);
-//     assert (is_null(H.next) || (integer)H.next != 0);
-//     take tl = IntList(H.next);
-//     return (Seq_Cons { val: H.val, next: tl });
-//   }
-// }
+  array_p[off] = 7;
+}

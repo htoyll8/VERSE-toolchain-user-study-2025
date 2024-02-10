@@ -50,6 +50,8 @@ void max_test()
   assert(v == 7);
 }
 
+// Compute the absolute value a function. 
+
 /*@
 function (integer) abs_spec(integer x)
 {
@@ -106,40 +108,68 @@ int abs_stupid(int x)
   return x + 2;
 }
 
-/*@
-function [rec] (integer) fib_spec(integer n)
-{
-  if (n == 0) { 0 }
-  else { if (n == 1) { 1 }
-  else { fib_spec(n - 1) + fib_spec(n - 2)}}
-}
-@*/
+// /*@
+// function [rec] (integer) fib_spec(integer n)
+// {
+//   if (n == 0) { 0 }
+//   else { if (n == 1) { 1 }
+//   else { fib_spec(n - 1) + fib_spec(n - 2)}}
+// }
+// @*/
 
-int compute_fib(int n)
-/*@ requires 0 <= n @*/
-/*@ ensures return == fib_spec(n) @*/
-{
-  int i = 1;
-  int a = 0;
-  int b = 1;
+// int compute_fib(int n)
+// /*@ requires 0 <= n @*/
+// /*@ ensures return == fib_spec(n) @*/
+// {
+//   int i = 1;
+//   int a = 0;
+//   int b = 1;
 
-  if (n == 0)
+//   if (n == 0)
+//   {
+//     /*@ unfold fib_spec(0) @*/
+//     return 0;
+//   };
+
+//   while (i < n)
+//   /*@ inv 0 < i; i <= n @*/
+//   /*@ inv a == fib_spec(i - 1) @*/
+//   /*@ inv b == fib_spec(i) @*/
+//   {
+//     /*@ unfold fib_spec(i) @*/
+//     int tmp_a = a;
+//     a = b;
+//     b = tmp_a + b;
+//     i = i + 1;
+//   }
+
+//   return b;
+// }
+
+int find(int* a, int length, int key) 
+/*@ requires 0 < length @*/
+/*@ requires take IndexPre = each (integer j; 0 <= j && j < length) 
+                                  {Owned<int>(a + j)} @*/
+/*@ ensures take IndexPost = each (integer j; 0 <= j && j < length) 
+                                  {Owned<int>(a + j)} @*/
+/*@ ensures (return < 0) || (IndexPost[return] == key) @*/
+// TODO: prove that if return == 0, the key isn't present in the index
+/*@ ensures IndexPre == IndexPost @*/
+{ 
+  int idx = 0; 
+
+  while (idx < length)
+  /*@ inv {a}unchanged; {length}unchanged; {key}unchanged @*/
+  /*@ inv 0 <= idx; idx <= length @*/
+  /*@ inv take IndexInv = each (integer j; 0 <= j && j < length) 
+                               {Owned<int>(a + j)} @*/
+  /*@ inv IndexInv == IndexPre @*/
   {
-    /*@ unfold fib_spec(0) @*/
-    return 0;
-  };
-
-  while (i < n)
-  /*@ inv 0 < i; i <= n @*/
-  /*@ inv a == fib_spec(i - 1) @*/
-  /*@ inv b == fib_spec(i) @*/
-  {
-    /*@ unfold fib_spec(i) @*/
-    int tmp_a = a;
-    a = b;
-    b = tmp_a + b;
-    i = i + 1;
-  }
-
-  return b;
+    /*@ extract Owned<int>, idx @*/
+    /*@ instantiate good<int>, idx  @*/ // TODO: what does this do? 
+    if( *(a + idx) == key) { return idx; } 
+    idx = idx + 1; 
+  }; 
+  idx = -1; 
+  return idx; 
 }
