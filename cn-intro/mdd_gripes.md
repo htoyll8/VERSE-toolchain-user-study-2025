@@ -1,7 +1,7 @@
 MDD error log: 
-- Very often: forgot the `{x}unchanged` annotation on loops. The error message
-  in this situation is very unhelpful. It typically says `missing resource' at
-  the `return` or something similar. What's actually happening is that the
+- Very very often: forgot the `{x}unchanged` annotation on loops. The error
+  message in this situation is unhelpful. It typically says `missing resource'
+  at the `return` or something similar. What's actually happening is that the
   resource at the return site exists in nearly the right form, but CN can't
   prove that one or more variables have stayed the same. 
 - Often: didn't include the `extract` or `instantiate` commands during error
@@ -29,12 +29,14 @@ Gripes / questions:
 - How do we get CN to dump out the txt trace? UPDATE: this seems to be
   hard-coded
 - confused by the {x}@start notation? UPDATE: seems to deprecated now.
-- What does free look like? Malloc?
+- What does the specification for free look like? Malloc?
 - Confused by the 'extract' and 'instantiate' operations? How does it know which
   resource to access? Why are they necessary? 
 - V. confusing error message without the 'unchanged' modifier on invariants
 - Why no implication in the syntax? 
 - How to universally quantify in the postcondition? 
+- CN verified functions in reverse order, which isn't a serious problem but is 
+  oddly annoying. 
 
 Design suggestions / warts:
 - It would be great to just get syntax highlighting working on the CN portions
@@ -49,3 +51,18 @@ Design suggestions / warts:
 - Unclear how extract works?
 - Unhelpful error message when unchanged is missed
 
+# Quantification notes 
+
+I'd like to write this `requires` clause, but it currently doesn't parse: 
+``` 
+/*@ 
+requires 
+  each (integer j; 0 <= j && j < length) 
+  { 
+    each (integer k; j < k && k < length) 
+    {
+      IndexPre[j] <= IndexPre[k]; 
+    }
+  }
+@*/
+```
