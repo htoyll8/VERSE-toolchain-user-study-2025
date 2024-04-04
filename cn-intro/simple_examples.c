@@ -1,9 +1,11 @@
-// Some simple CN examples 
+// Some simple CN examples
 // Mike Dodds - Galois Inc - January 2024
 
 // CN Manual (WIP): https://github.com/rems-project/cerberus/blob/master/backend/cn/manual/manual.md
 
-#define NULL ((void *)0)
+#include <assert.h>
+#include <stddef.h> // For offsetof macro
+#include <stdint.h> // For uintptr_t, intptr_t
 
 // A main() function that does nothing. This can't fault, and therefore requires
 // no CN annotations.
@@ -32,7 +34,7 @@ signed int add_1(signed int x, signed int y)
 
 signed int add_2(signed int x, signed int y)
 /*@ requires x == 0 @*/
-/*@ ensures return == x + y @*/
+/*@ ensures return == y @*/
 {
   signed int i;
   i = x + y;
@@ -256,7 +258,7 @@ int loop_4()
   return acc;
 }
 
-// A loop with a post-condition: 
+// A loop with a post-condition:
 
 int loop_5()
 /*@ ensures return == 7 @*/
@@ -273,7 +275,7 @@ int loop_5()
   return ret;
 }
 
-// A loop with a post-condition and a very big constant: 
+// A loop with a post-condition and a very big constant:
 
 int loop_6(int n)
 /*@ ensures return == 789398323 @*/
@@ -287,15 +289,15 @@ int loop_6(int n)
   return i;
 }
 
-// The same loop with a symbolic input. 
+// The same loop with a symbolic input.
 
 // This proof previously had a subtle bug in it because I omitted the
 // `{n}unchanged property` from the loop invariant. This is okay if what we want
-// is to establish: 
+// is to establish:
 //   "the return value is equal to the current value of n"
-// But actually, the `ensures` clause requires that 
+// But actually, the `ensures` clause requires that
 //   "the return value is the same as the value of n passed as an argument"
-// This requires we prove that n is unchanged. 
+// This requires we prove that n is unchanged.
 
 int loop_7(int n)
 /*@ requires 0 < n @*/
@@ -304,7 +306,7 @@ int loop_7(int n)
   int i = 0;
   while (i < n)
   /*@ inv 0 <= i; i <= n @*/
-  /*@ inv {n}unchanged @*/ // TODO: see above for why this is needed 
+  /*@ inv {n}unchanged @*/ // TODO: see above for why this is needed
   {
     i = i + 1;
   };
@@ -737,7 +739,7 @@ void extract_2(unsigned long int *array_p, int off, int n)
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ ensures  arrayEnd[off] == 7 @*/
 {
-  /*@ extract Owned<unsigned long int>, off @*/ 
+  /*@ extract Owned<unsigned long int>, off @*/
   unsigned long int tmp = array_p[off];
 
   array_p[off] = 7;
@@ -749,10 +751,140 @@ void extract_3(int *array_p, int off, int n)
 /*@ ensures  take arrayEnd =   each (integer j; 0 <= j && j < n) {Owned(array_p + j)} @*/
 /*@ ensures  arrayEnd[off] == 7 @*/
 {
-  /*@ extract Owned<int>, off @*/ 
-  /*@ instantiate good<int>, off @*/ // TODO: why is this necessary? 
+  /*@ extract Owned<int>, off @*/
+  /*@ instantiate good<int>, off @*/ // TODO: why is this necessary?
   int tmp = array_p[off];
-  if (tmp == 0 && 0 == 1) { return; }; 
+  if (tmp == 0 && 0 == 1)
+  {
+    return;
+  };
 
   array_p[off] = 7;
+}
+
+// We can assign directly into a struct field using pointer arithmetic
+
+struct field_test_struct
+{
+  int anotherField;
+  int someField;
+};
+
+int assign_field_1()
+/*@ ensures return == 7 @*/
+{
+  struct field_test_struct s;
+  s.someField = 42;
+
+  // Directly accessing someField via pointer arithmetic
+  int *fieldPtr = (int *)((char *)&s + offsetof(struct field_test_struct, someField));
+  *fieldPtr = 7;
+  s.anotherField = 8;
+
+  int ret = *fieldPtr;
+  return ret;
+}
+
+// Variant that takes a structure in memory
+// TODO: doesn't work
+
+// int assign_field_2(struct field_test_struct *s)
+// /*@ requires take Pre = Owned<struct field_test_struct>(s) @*/
+// /*@ ensures return == 7 @*/
+// {
+//   s->someField = 42;
+
+//   // Directly accessing someField via pointer arithmetic
+//   int *fieldPtr = (int *)((char *)&s + offsetof(struct field_test_struct, someField));
+//   *fieldPtr = 7;
+//   s->anotherField = 8;
+
+//   int ret = *fieldPtr;
+//   return ret;
+// }
+
+// Copy a float into an int using memcpy
+// TODO: doesn't work
+
+// int memcpy_1()
+// {
+//   float f = 1.23f;
+//   unsigned int fAsInt;
+
+//   // Copy the bytes of the float into the unsigned int
+//   memcpy(&fAsInt, &f, sizeof(f));
+
+//   return fAsInt;
+// }
+
+// Cast a pointer to an int, and back
+
+int int_ptr_1()
+/*@ ensures return == 7 @*/
+{
+  int x = 7;
+  int *ptr = &x;
+
+  // Cast pointer to uintptr_t
+  uintptr_t ptrVal = (uintptr_t)ptr;
+
+  // Cast back to pointer
+  int *ptrOriginal = (int *)ptrVal;
+
+  int ret = *ptrOriginal;
+
+  return ret;
+}
+
+// Variant that requires a bit more flow-sensitive reasoning
+
+int int_ptr_2()
+/*@ ensures return == 7 @*/
+{
+  int x = 7;
+  int *ptr = &x;
+
+  // Cast pointer to uintptr_t
+  uintptr_t ptrVal = (uintptr_t)ptr;
+
+  uintptr_t ptrStore = ptrVal;
+  ptrVal = ptrVal + 1;
+  if (ptrStore < ptrVal)
+  {
+    ptrVal = ptrVal - 1;
+  }
+
+  // Cast back to pointer
+  int *ptrOriginal = (int *)ptrVal;
+
+  int ret = *ptrOriginal;
+
+  return ret;
+}
+
+// Variant that passes memory from the context
+
+int int_ptr_3(int *ptr)
+/*@ requires take Pre = Block<int>(ptr) @*/
+/*@ ensures take Post = Owned<int>(ptr) @*/
+/*@ ensures return == 7 @*/
+{
+  *ptr = 7;
+
+  // Cast pointer to uintptr_t
+  uintptr_t ptrVal = (uintptr_t)ptr;
+
+  uintptr_t ptrStore = ptrVal;
+  ptrVal = ptrVal + 1;
+  if (ptrStore < ptrVal)
+  {
+    ptrVal = ptrVal - 1;
+  }
+
+  // Cast back to pointer
+  int *ptrOriginal = (int *)ptrVal;
+
+  int ret = *ptrOriginal;
+
+  return ret;
 }
