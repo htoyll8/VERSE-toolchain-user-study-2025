@@ -24,11 +24,12 @@ Finally, read through these best practices guidelines.
 - [Git guidelines](#git-guidelines)
 - (external) [A wonderful, general overview of best practices](https://gitlab-ext.galois.com/program-analysis/guidance/-/blob/master/BestPractices.org) ([permalink](https://gitlab-ext.galois.com/program-analysis/guidance/-/blob/78d2d6229f027579384c39a76cf28026b03279a7/BestPractices.org))
 
-Wondering if the squeeze is worth the juice? Jump to [Why this process?](#why-this-process)
+Wondering if the juice is worth the squeeze? Jump to [Why this process?](#why-this-process)
 
 ## Setting up your development environment
 
-To do: link to code format and lint configurations for each language we use.
+We currently don't have any specific environment setup, but will add information
+here as we progress in the project.
 
 ## Contributing code
 
@@ -50,6 +51,10 @@ Create a GitHub issue describing the change you're planning to make.
 - Add a label for your organization (Galois, UCam, etc.)
 - Add labels for the type of work (IDE, CN, documentation, etc.)
 
+If you create the issue from the repo on GitHub, there are _bug_ and _feature_
+issue templates to guide you through the process. Creating issues from the
+project board unfortunately cannot use the templates.
+
 Creating an issue automatically adds it to the project board, which helps us
 track and prioritize ongoing work across different teams and organizations.
 Tying issues to development work (and PRs) also makes it easier to answer questions
@@ -70,11 +75,12 @@ locally.
 
 Here are some things to consider as you develop on your branch:
 
+- Structure your changes into small commits that each address a specific task.
+  See [What goes in a commit?](#what-goes-in-a-commit)
+
 - Write unit and integration tests.
 
-- Merge regularly from the main branch.
-
-- Rebasing from the main branch (`git pull --rebase origin main`) is not recommended. See [the "Merging" section in these guidelines](https://gitlab-ext.galois.com/program-analysis/guidance/-/blob/master/BestPractices.org?ref_type=heads#:~:text=updating%20a%20submodule.-,Versioning,-Versioning%20should%20follow) for the reasoning.
+- Rebase regularly from the main branch (`git pull -r origin main`).
 
 - Push regularly to your remote branch. This saves your work and runs CI tests.
 
@@ -87,6 +93,8 @@ When you are ready to have your changes reviewed, create a PR on GitHub.
 - Summarize your change.
 - Tag one or more reviewers.
 - Link to the issue it addresses using `closes/resolves/fixes #XX`, where XX is the issue number.
+
+The PR template will guide this process.
 
 At least one reviewer needs to approve your PR. The _reviewer_ should either:
 
@@ -103,8 +111,8 @@ the related issue(s) as appropriate.
 
 ### Merge your PR
 
-Ideally, your commit history will reflect small, targeted, well-formed commits
-that play nicely with `git bisect`. If not, consider using "squash and merge".
+Before merging, see [What goes in a commit?](#what-goes-in-a-commit) for
+guidelines on merging your branch commit history into `main`.
 
 ### Delete your branch
 
@@ -140,32 +148,88 @@ Git will warn you if you try to delete a branch that hasn't been merged.
 
 ## Git guidelines
 
+- [General guidelines](#general-guidelines)
+- [What goes in a commit?](#what-goes-in-a-commit)
+- [Why support `git bisect`?](#why-support-git-bisect)
+
+### General guidelines
+
 - Do not commit directly to `main`.
-- To support bisecting, do not merge WIP commits that break the build.
-  On topic branches, squash commits as needed before merging, but only
-  to reduce excessive small commits; the development history of topic
-  branches should be preserved as much as is reasonable. Use your
-  best judgement. Ask a git expert for advise if you are stuck more
-  than 10 minutes.
-- Write short, useful commit messages with a consistent style. Follow
-  these [seven rules][], with the amendment that on this project, we
-  have adopted the convention of ending the subject line with a
-  period. Galois has excellent resources about commit messages, please consult
-  [What goes into a commit](https://confluence.galois.com/pages/viewpage.action?pageId=82346420)
+
+- Do not merge WIP commits that break the build (required for
+  [`git bisect`](#why-support-git-bisect)).
+
+- Write short, useful commit messages with a consistent style (see [What goes in
+  a commit?](#what-goes-in-a-commit)).
+
 - Keep your topic branches small to facilitate review.
+
 - Before merging someone else's PR, make sure other reviewers'
   comments are resolved, and that the MP author considers the PR ready
   to merge.
+
 - For security-sensitive code, ensure your changes have received an
   in-depth review, preferably from multiple reviewers. Please consult [Code reviews page](https://confluence.galois.com/display/EN/Code+Reviews) for more details.
-- Configure Git so that your commits are [signed][].
 
-- Avoid `git push --force`. If you must, make sure that you know that no one else has pushed changes to the branch that are not in the history of your local branch. If others on the team are pulling and testing it locally, they will need to fix up their local branches with `git checkout <yourbranch>`, `git fetch`, and `git reset --hard origin/<yourbranch>`. For more details, please see [The Dark Side of the Force Push][] and [--force considered harmful; understanding git's --force-with-lease][].
+- Consider using `git pull -r` to fetch remote changes. This will rebase local
+  changes on top of remote changes, which keeps history more linear and will keep
+  local changes instead of discarding them in the case that someone force pushed
+  to the remote.
+
+- Avoid `git push --force` to shared branches. If you must, prefer `git push
+--force-with-lease --force-if-includes`. See [The Dark Side of the Force Push][]
+  and [--force considered harmful; understanding git's --force-with-lease][].
+
+- [Optional] Configure Git so that your commits are [signed][].
 
 [The Dark Side of the Force Push]: http://willi.am/blog/2014/08/12/the-dark-side-of-the-force-push/
 [--force considered harmful; understanding git's --force-with-lease]: https://developer.atlassian.com/blog/2015/04/force-with-lease/
 [seven rules]: https://chris.beams.io/posts/git-commit/#seven-rules
 [signed]: https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
+
+### What goes in a commit?
+
+Follow these [seven rules][] for writing commit messages.
+
+Commits should be minimal self-contained changes, reflected in the commit
+message. This is an art we aspire to. See [this
+article](https://confluence.galois.com/pages/viewpage.action?pageId=82346420)
+for an in-depth discussion.
+
+For example, consider these sets of commit messages.
+
+- `Add logging util to capture timing`
+- `Add new core algorithm, disabled by default`
+- `Add flag to use new core algorithm`
+
+is preferable to
+
+- `Add new core algorithm with flag to enable`
+
+is preferable to
+
+- `First attempt at core algorithm`
+- `Fix logging`
+- `Refactor logging fix`
+- `Fix up algorithm`
+- `WIP`
+- `Finish alg`
+- `Add flag`
+
+Small commits that each address a single, self-contained issue are easy to review, easy to trace in `git log`, and make `git bisect` much more effective.
+
+### Why support `git bisect`?
+
+`git bisect <known-good-commit> <known-bad-commit>` is a debugging utility to find which commit first introduced a bug. Using a binary search, it will iteratively check out a commit between a known-good and known-bad commit; you will then run tests to determine if the bug is present and mark the commit "good" or "bad". Eventually, it will point you to the first bad commit.
+
+This only works if every commit is well formed. Suppose you have an example that triggers a bug, and you use `git bisect` to build and test each commit on that example. Consider the following series of commits.
+
+1. `Partially implements XX (broken)`
+2. `Finishes implementing XX (fixed)`
+
+When `git bisect` checks out (1), you will be unable to build the project or determine if the bug is present.
+
+The guidelines in [What goes in a commit?](#what-goes-in-a-commit) support `git bisect` by encouraging each commit to be small and self contained.
 
 ## Why this process?
 
@@ -173,9 +237,11 @@ We are coordinating development across a variety of teams at different organizat
 
 - **Visibility**. We need to understand what work has been planned, started, completed, or blocked, and who is doing it, in order to prioritize our next steps as things slip or circumstances change. We use issues and the project board for this.
 
-- **Accountability**. When code changes, we need to understand why. This sometimes lives in commit messages, PR messages, issues, or a developer's head. In this project, we're standardizing on issues, which is why all work starts with an issue.
-
-  - Commit messages should still be informative support `git log` and `git bisect`.
+- **Traceability**. When code changes, we need to understand why. This sometimes
+  lives in commit messages, PR messages, issues, or a developer's head. In this
+  project, we're standardizing on issues, which is why all work starts with an
+  issue. Commit messages still give context for specific changes (details
+  [here](#what-goes-in-a-commit)); multiple commits may support a single issue.
 
 - **Development best practices.** Software engineering research and personal experience both suggest that coherent contribution guidelines ease development while raising the level of assurance. See [here](https://gitlab-ext.galois.com/program-analysis/guidance/-/blob/78d2d6229f027579384c39a76cf28026b03279a7/BestPractices.org) for motivation and details of specific best practices, some of which are adopted in this document.
 
