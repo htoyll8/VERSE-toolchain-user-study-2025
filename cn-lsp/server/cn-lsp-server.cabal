@@ -1,0 +1,54 @@
+cabal-version: 3.0
+
+author: Sam Cowger
+build-type: Simple
+category: Language
+license: NONE
+maintainer: sam@galois.com
+name: cn-lsp-server
+version: 0.0.1
+
+
+common basis
+    ghc-options:
+        -Wall
+        -Wextra
+
+    default-language: GHC2021
+
+    default-extensions:
+        ExplicitNamespaces
+
+    build-depends:
+        base >=4.16.0.0 && <15,
+        lsp ^>=2.6.0.0,
+        lsp-types ^>=2.2.0.0,
+
+library
+    import: basis
+
+    hs-source-dirs: src
+
+    exposed-modules:
+        Server
+
+
+executable cn-lsp-server
+    import: basis
+
+    hs-source-dirs: app
+    main-is: Main.hs
+
+    build-depends:
+        cn-lsp-server,
+
+
+test-suite cn-lsp-server-test
+    import: basis
+
+    hs-source-dirs: test
+    main-is: Main.hs
+    type: exitcode-stdio-1.0
+
+    build-depends:
+        cn-lsp-server,
