@@ -66,3 +66,34 @@ requires
   }
 @*/
 ```
+
+# Even more gripes 2024-4-19
+
+* The `power` function now claims to be uninterpreted, but somehow has an effect
+  on the behavior. 
+
+* I can write: 
+```
+/*@ requires 
+      let MAXi32 = (i64) 2147483647i64; // TODO: lift to library 
+      (i64) i + 1i64 <  MAXi32 @*/
+```
+... but I can't write
+```
+/*@ requires 
+      let MAXi32 = (i64) 2147483647i64; // TODO: lift to library 
+      (i64) i + (i64) 1 <  MAXi32 @*/
+```
+
+This also means you have to write: 
+```
+      x == (0i32 - 1i32) @*/
+```
+Rather than the slightly more natural version: 
+```
+      x == (i32) (-1) @*/
+```
+
+
+* Inconsistent semicolons in the spec language. Required some places, eg
+  extract. Forbidden elsewhere, eg. a the end of requires / ensures 
