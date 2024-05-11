@@ -4,7 +4,7 @@
 target_file=$1
 
 # Capture the exit code of interest 
-timeout 60 cn -I "$csmith_runtime" "$target_file" >/dev/null 2>&1
+timeout 60 cn "$target_file" >/dev/null 2>&1
 code=$?
 
 echo "CN return code: ${code}"
