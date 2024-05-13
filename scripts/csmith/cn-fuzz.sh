@@ -52,7 +52,7 @@ while [[ $attempts -lt $maxattempts ]] && [[ $examples -lt $maxexamples ]]; do
   fi
 
   # Test whether the file passes the interestingness test
-  if sh ./cn-fuzz-helper.sh; then
+  if sh ./test-with-cn.sh; then
     printf "X"
 
     # Copy the file 
@@ -60,7 +60,7 @@ while [[ $attempts -lt $maxattempts ]] && [[ $examples -lt $maxexamples ]]; do
     cp "${tmpfile}" "./examples/${copyname}_original.c"
 
     # Reduce the file 
-    creduce --tidy cn-fuzz-helper.sh "${tmpfile}" >/dev/null 2>&1
+    creduce --tidy test-with-cn.sh "${tmpfile}" >/dev/null 2>&1
 
     # Copy the result 
     cp "${tmpfile}" "./examples/${copyname}_reduced.c"

@@ -6,7 +6,7 @@ This directory contains two scripts that try to find and reduce errors in CN:
 * `cn-fuzz.sh` - a script that uses `csmith` to find files that generate a
   particular CN error, and then uses `creduce` to minimize the error file. 
 
-Both of these scripts depend on `cn-fuzz-helper.sh` which defines the
+Both of these scripts depend on `test-with-cn.sh` which defines the
 'interestingness test' for `creduce`. 
 
 

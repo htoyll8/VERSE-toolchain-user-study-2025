@@ -14,4 +14,4 @@ echo "CN return code: ${code}"
 export CREDUCE_TARGET_FILE="${target_file}"
 export CREDUCE_TARGET_CODE=$code
 
-creduce cn-fuzz-helper.sh "${target_file}"
+creduce test-with-cn.sh "${target_file}"
