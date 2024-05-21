@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "scopeName": "source.c.cn",
-    "injectionSelector": "L:source.c",
+    "injectionSelector": "L:source.c -string -comment",
     "name": "CN",
     "patterns": [
         {
