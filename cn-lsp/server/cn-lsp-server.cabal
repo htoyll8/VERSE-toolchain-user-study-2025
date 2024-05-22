@@ -13,16 +13,23 @@ common basis
     ghc-options:
         -Wall
         -Wextra
+        -Wunticked-promoted-constructors
 
     default-language: GHC2021
 
     default-extensions:
+        BlockArguments
         ExplicitNamespaces
+        RecordWildCards
 
     build-depends:
         base >=4.16.0.0 && <15,
+        aeson ^>=2.2.1.0,
         lsp ^>=2.6.0.0,
         lsp-types ^>=2.2.0.0,
+        mtl ^>=2.3.1,
+        text ^>=2.0.2,
+        unliftio-core ^>=0.2.1.0,
 
 library
     import: basis
@@ -30,6 +37,7 @@ library
     hs-source-dirs: src
 
     exposed-modules:
+        Monad
         Server
 
 
