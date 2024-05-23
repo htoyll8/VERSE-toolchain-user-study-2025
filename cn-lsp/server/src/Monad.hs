@@ -2,13 +2,15 @@ module Monad where
 
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
-import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
-import Language.LSP.Server (LanguageContextEnv, LspM, runLspT)
+import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Monad.Reader.Class (MonadReader, asks)
+import Language.LSP.Server (LanguageContextEnv, LspM, MonadLsp (..), runLspT)
 
 type Config = ()
 
 data ServerEnv = ServerEnv
-  { seCtxEnv :: LanguageContextEnv Config
+  { seCtxEnv :: LanguageContextEnv Config,
+    seLogFile :: FilePath
   }
 
 newtype ServerM a = ServerM {unServerM :: ReaderT ServerEnv (LspM Config) a}
@@ -20,6 +22,9 @@ newtype ServerM a = ServerM {unServerM :: ReaderT ServerEnv (LspM Config) a}
       MonadReader ServerEnv,
       MonadUnliftIO
     )
+
+instance MonadLsp Config ServerM where
+  getLspEnv = asks seCtxEnv
 
 runServerM :: ServerEnv -> ServerM a -> IO a
 runServerM serverEnv (ServerM rdrAction) =

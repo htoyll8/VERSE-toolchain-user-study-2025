@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 
 HERE=$(dirname $0)
-tee $HERE/inputs.txt | $HERE/cn-lsp-server | tee $HERE/outputs.txt
+LOGFILE=$1
+
+tee $HERE/inputs.txt | $HERE/cn-lsp-server $LOGFILE | tee $HERE/outputs.txt

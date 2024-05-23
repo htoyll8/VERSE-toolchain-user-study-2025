@@ -12,8 +12,8 @@ import Language.LSP.Server (LanguageContextEnv, type (<~>) (Iso))
 import Language.LSP.Server qualified as LSP
 import Monad (Config, ServerEnv (..), ServerM, runServerM)
 
-server :: LSP.ServerDefinition Config
-server = LSP.ServerDefinition {..}
+mkServer :: FilePath -> LSP.ServerDefinition Config
+mkServer logFile = LSP.ServerDefinition {..}
   where
     defaultConfig :: Config
     defaultConfig = ()
@@ -31,7 +31,8 @@ server = LSP.ServerDefinition {..}
       LanguageContextEnv Config ->
       LSP.TRequestMessage 'LSP.Method_Initialize ->
       IO (Either LSP.ResponseError ServerEnv)
-    doInitialize ctxEnv _ = pure (Right (ServerEnv {seCtxEnv = ctxEnv}))
+    doInitialize ctxEnv _ =
+      pure (Right (ServerEnv {seCtxEnv = ctxEnv, seLogFile = logFile}))
 
     staticHandlers :: LSP.ClientCapabilities -> LSP.Handlers ServerM
     staticHandlers _ = mempty

@@ -25,6 +25,7 @@ common basis
     build-depends:
         base >=4.16.0.0 && <15,
         aeson ^>=2.2.1.0,
+        co-log-core ^>=0.3.2.1,
         lsp ^>=2.6.0.0,
         lsp-types ^>=2.2.0.0,
         mtl ^>=2.3.1,
@@ -37,6 +38,7 @@ library
     hs-source-dirs: src
 
     exposed-modules:
+        Log
         Monad
         Server
 
