@@ -6,6 +6,7 @@ module Server where
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (Value)
 import Data.Text (Text)
+import Handlers (mkHandlers)
 import Language.LSP.Protocol.Message qualified as LSP
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server (LanguageContextEnv, type (<~>) (Iso))
@@ -35,7 +36,7 @@ mkServer logFile = LSP.ServerDefinition {..}
       pure (Right (ServerEnv {seCtxEnv = ctxEnv, seLogFile = logFile}))
 
     staticHandlers :: LSP.ClientCapabilities -> LSP.Handlers ServerM
-    staticHandlers _ = mempty
+    staticHandlers = mkHandlers
 
     interpretHandler :: ServerEnv -> ServerM <~> IO
     interpretHandler serverEnv = Iso (runServerM serverEnv) liftIO

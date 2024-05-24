@@ -38,6 +38,13 @@ library
     hs-source-dirs: src
 
     exposed-modules:
+        Handlers
+        Handlers.Initialized
+        Handlers.TextDocument.DidChange
+        Handlers.TextDocument.DidClose
+        Handlers.TextDocument.DidOpen
+        Handlers.TextDocument.DidSave
+        Handlers.Workspace.DidChangeConfiguration
         Log
         Monad
         Server
