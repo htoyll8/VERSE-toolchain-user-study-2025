@@ -68,4 +68,22 @@ mkServer logHdl = LSP.ServerDefinition {..}
     interpretHandler serverEnv = Iso (runServerM serverEnv) liftIO
 
     options :: LSP.Options
-    options = LSP.defaultOptions
+    options = serverOptions
+
+serverOptions :: LSP.Options
+serverOptions =
+  LSP.defaultOptions
+    { LSP.optTextDocumentSync =
+        Just
+          LSP.TextDocumentSyncOptions
+            { -- Don't send notifications of documents being opened or closed
+              _openClose = Just False,
+              -- Don't send any updates as the text of a document changes
+              _change = Just LSP.TextDocumentSyncKind_None,
+              _willSave = Just False,
+              _willSaveWaitUntil = Just False,
+              -- Do send notifications of documents being saved, but don't
+              -- include the text
+              _save = Just (LSP.InR (LSP.SaveOptions {_includeText = Just False}))
+            }
+    }
