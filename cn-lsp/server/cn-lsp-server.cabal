@@ -20,6 +20,7 @@ common basis
     default-extensions:
         BlockArguments
         ExplicitNamespaces
+        LambdaCase
         RecordWildCards
 
     build-depends:
@@ -29,8 +30,10 @@ common basis
         lsp ^>=2.6.0.0,
         lsp-types ^>=2.2.0.0,
         mtl ^>=2.3.1,
+        process ^>=1.6.17.0,
         text ^>=2.0.2,
         unliftio-core ^>=0.2.1.0,
+        vector ^>=0.13.1.0,
 
 library
     import: basis
@@ -38,6 +41,7 @@ library
     hs-source-dirs: src
 
     exposed-modules:
+        CN
         Handlers
         Handlers.Initialized
         Handlers.TextDocument.DidChange
@@ -48,6 +52,7 @@ library
         Log
         Monad
         Server
+        Util
 
 
 executable cn-lsp-server

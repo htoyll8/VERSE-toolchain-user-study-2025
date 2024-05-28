@@ -18,7 +18,8 @@ import Control.Monad.Reader.Class (asks)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Language.LSP.Logging (logToLogMessage)
-import Monad (ServerEnv (seLogFile), ServerM)
+import Monad (ServerEnv (seLogHdl), ServerM)
+import System.IO (hFlush, hPutStrLn)
 
 -- | Send the client a debug-level message
 cDebug :: Text -> ServerM ()
@@ -60,8 +61,9 @@ clientLog severity msg = logToLogMessage <& msg `WithSeverity` severity
 serverLog :: Colog.Severity -> Text -> ServerM ()
 serverLog severity msg =
   do
-    logFile <- asks seLogFile
-    liftIO (appendFile logFile (formatMessage (msg `WithSeverity` severity) <> "\n"))
+    logHdl <- asks seLogHdl
+    let str = formatMessage (msg `WithSeverity` severity)
+    liftIO (hPutStrLn logHdl str >> hFlush logHdl)
 
 -- | Pretty-print a log message
 formatMessage :: WithSeverity Text -> String
