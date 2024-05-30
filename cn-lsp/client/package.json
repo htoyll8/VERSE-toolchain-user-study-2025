@@ -31,6 +31,16 @@
                 "title": "CN: Run CN on the current file"
             }
         ],
+        "configuration": {
+            "title": "CN",
+            "properties": {
+                "CN.runOnSave": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Run CN whenever a file is saved"
+                }
+            }
+        },
         "grammars": [
             {
                 "path": "./syntaxes/cn.tmLanguage.json",

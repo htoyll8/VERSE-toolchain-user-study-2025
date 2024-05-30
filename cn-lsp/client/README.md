@@ -16,6 +16,13 @@ wrong, a window should appear to tell you that. If something is wrong, you
 should (hopefully) see CN errors rendered inline as red "squiggles", either in
 the current file or in a file it depends on.
 
+You can also choose to run CN on the current (`.c` or `.h`) file whenever it's
+saved, by opening settings (Cmd-,), searching for "CN", and selecting the
+checkbox for "Run On Save". You may not want to select this option if you're
+working with files where running CN is expensive, because the ability to cancel
+existing runs when new runs are requested hasn't (yet) been implemented, so you
+may end up with a number of orphaned CN processes.
+
 If the server fails to run CN or interpret its output, you can open up the
 "Output" pane (Cmd-Shift-U) and select "CN" from the dropdown menu on the right
 to see what output CN is producing and why the server is having trouble.
