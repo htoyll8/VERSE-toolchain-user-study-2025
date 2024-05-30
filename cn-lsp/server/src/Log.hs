@@ -1,5 +1,6 @@
 module Log
-  ( cDebug,
+  ( cInfoW,
+    cDebug,
     cInfo,
     cWarn,
     cError,
@@ -17,9 +18,12 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader.Class (asks)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Language.LSP.Logging (logToLogMessage)
+import Language.LSP.Logging (logToLogMessage, logToShowMessage)
 import Monad (ServerEnv (seLogHdl), ServerM)
 import System.IO (hFlush, hPutStrLn)
+
+cInfoW :: Text -> ServerM ()
+cInfoW = clientWindow Colog.Info
 
 -- | Send the client a debug-level message
 cDebug :: Text -> ServerM ()
@@ -52,6 +56,9 @@ sWarn = serverLog Colog.Warning
 -- | Log an error-level message within the server
 sError :: Text -> ServerM ()
 sError = serverLog Colog.Error
+
+clientWindow :: Colog.Severity -> Text -> ServerM ()
+clientWindow severity msg = logToShowMessage <& msg `WithSeverity` severity
 
 -- | Send the client a log message with the specified severity
 clientLog :: Colog.Severity -> Text -> ServerM ()

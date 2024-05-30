@@ -9,6 +9,7 @@ module Handlers (mkHandlers) where
 
 import Data.Aeson.Text qualified as Aeson
 import Data.Text.Lazy qualified as Text
+import Handlers.Custom.RunCN qualified
 import Handlers.Initialized qualified
 import Handlers.TextDocument.DidChange qualified
 import Handlers.TextDocument.DidClose qualified
@@ -33,7 +34,8 @@ mkHandlers _ =
     logRequest
     logNotification
     ( mconcat
-        [ Handlers.Initialized.handler,
+        [ Handlers.Custom.RunCN.handler,
+          Handlers.Initialized.handler,
           Handlers.TextDocument.DidChange.handler,
           Handlers.TextDocument.DidClose.handler,
           Handlers.TextDocument.DidOpen.handler,

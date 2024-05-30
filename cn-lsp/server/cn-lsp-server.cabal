@@ -43,6 +43,7 @@ library
     exposed-modules:
         CN
         Handlers
+        Handlers.Custom.RunCN
         Handlers.Initialized
         Handlers.TextDocument.DidChange
         Handlers.TextDocument.DidClose
