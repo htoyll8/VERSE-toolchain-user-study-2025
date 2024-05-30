@@ -8,6 +8,18 @@ VSCode window rooted in this directory. From a terminal in that window:
   - If this prompts you with a menu of choices, choose the one that mentions
     "Extension Development"
 
+## Running CN
+
+To run CN on the currently-open file, open the command palette (Cmd-Shift-P) and
+type "CN". You should see an option to run CN on the current file. If nothing is
+wrong, a window should appear to tell you that. If something is wrong, you
+should (hopefully) see CN errors rendered inline as red "squiggles", either in
+the current file or in a file it depends on.
+
+If the server fails to run CN or interpret its output, you can open up the
+"Output" pane (Cmd-Shift-U) and select "CN" from the dropdown menu on the right
+to see what output CN is producing and why the server is having trouble.
+
 
 # Installing
 

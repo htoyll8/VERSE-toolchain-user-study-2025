@@ -41,6 +41,18 @@ export function activate(context: vsc.ExtensionContext): void {
         serverOptions,
         clientOptions
     );
+
+    vsc.commands.registerCommand("CN.runOnFile", () => {
+        const req = new ct.RequestType("$/runCN");
+        const doc = vsc.window.activeTextEditor.document;
+        const params: ct.DidSaveTextDocumentParams = {
+            textDocument: {
+                uri: doc.uri.toString(),
+            },
+        };
+        client.sendRequest(req, params);
+    });
+
     client.start();
     console.log("started client");
 }
