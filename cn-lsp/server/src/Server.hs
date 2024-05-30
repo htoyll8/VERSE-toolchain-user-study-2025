@@ -7,26 +7,31 @@ import CN (getCN)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (Value, (.=))
 import Data.Aeson qualified as Aeson
+import Data.Aeson.Types qualified as Aeson
+import Data.Bifunctor (Bifunctor (first))
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Handlers (mkHandlers)
 import Language.LSP.Protocol.Message qualified as LSP
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server (LanguageContextEnv, type (<~>) (Iso))
 import Language.LSP.Server qualified as LSP
-import Monad (Config, ServerEnv (..), ServerM, runServerM)
+import Monad (Config, ServerEnv (..), ServerM, defConfig, runServerM)
 import System.IO (Handle)
 
 mkServer :: Handle -> LSP.ServerDefinition Config
 mkServer logHdl = LSP.ServerDefinition {..}
   where
     defaultConfig :: Config
-    defaultConfig = ()
+    defaultConfig = defConfig
 
     configSection :: Text
     configSection = "CN"
 
     parseConfig :: Config -> Value -> Either Text Config
-    parseConfig _ _ = Right ()
+    parseConfig _oldCfg newCfg =
+      first Text.pack $
+        Aeson.parseEither Aeson.parseJSON newCfg
 
     onConfigChange :: Config -> ServerM ()
     onConfigChange _ = pure ()
