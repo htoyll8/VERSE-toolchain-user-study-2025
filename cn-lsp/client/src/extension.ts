@@ -44,7 +44,14 @@ export function activate(context: vsc.ExtensionContext): void {
 
     vsc.commands.registerCommand("CN.runOnFile", () => {
         const req = new ct.RequestType("$/runCN");
-        const doc = vsc.window.activeTextEditor.document;
+
+        const activeEditor = vsc.window.activeTextEditor;
+        if (activeEditor === undefined) {
+            vsc.window.showErrorMessage("CN client: no file currently open");
+            return;
+        }
+        const doc = activeEditor.document;
+
         const params: ct.DidSaveTextDocumentParams = {
             textDocument: {
                 uri: doc.uri.toString(),
