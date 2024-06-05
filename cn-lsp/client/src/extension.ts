@@ -1,12 +1,20 @@
 import * as vsc from "vscode";
-
 import * as ct from "vscode-languageclient/node";
+
+import fs from "fs";
+import child_process from "child_process";
 
 let client: ct.LanguageClient;
 
+type Maybe<T> = T | null;
+
 export function activate(context: vsc.ExtensionContext): void {
-    const serverPath = context.asAbsolutePath("../server/bin/debug-server");
-    const logFile = context.asAbsolutePath("../server/log.txt");
+    const serverPath = findServer(context);
+    if (serverPath === null) {
+        vsc.window.showErrorMessage("CN client: unable to find CN server");
+        throw Error;
+    }
+    const logFile = context.asAbsolutePath("./server-log.txt");
     const serverOptions: ct.Executable = {
         command: serverPath,
         args: [logFile],
@@ -70,4 +78,33 @@ export function deactivate(): Thenable<void> | undefined {
     } else {
         return client.stop();
     }
+}
+
+function findServer(context: vsc.ExtensionContext): Maybe<string> {
+    // Is it defined in $CN_LSP_SERVER?
+    console.log("Looking in $CN_LSP_SERVER");
+    console.log(process.env);
+    let envPath = process.env.CN_LSP_SERVER;
+    if (envPath !== undefined) {
+        return envPath;
+    }
+
+    // Is it in a sibling directory? We expect this to hold in debug settings,
+    // i.e. when the extension is running in a development host window.
+    console.log("Looking in sibling directory");
+    let siblingPath = context.asAbsolutePath("../server/bin/debug-server");
+    if (fs.existsSync(siblingPath)) {
+        return siblingPath;
+    }
+
+    // Is it on $PATH?
+    console.log("Looking on $PATH");
+    const out = child_process.spawnSync("which", ["cn-lsp-server"], {
+        encoding: "utf-8",
+    });
+    if (out.status === 0) {
+        return out.stdout.trim();
+    }
+
+    return null;
 }
