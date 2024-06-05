@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 BIN_NAME=cn-lsp-server
-INSTALL_DIR=bin
+LOCAL_INSTALL_DIR=bin
 
 cabal build exe:$BIN_NAME
 
-mkdir -p $INSTALL_DIR
-
-cp $(cabal exec which $BIN_NAME) $INSTALL_DIR
+mkdir -p $LOCAL_INSTALL_DIR
+cabal install --overwrite-policy=always exe:$BIN_NAME
+cabal install --overwrite-policy=always --installdir=$LOCAL_INSTALL_DIR exe:$BIN_NAME

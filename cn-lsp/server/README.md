@@ -4,12 +4,17 @@ This application should be buildable with `cabal` version 3.10.3.0 and `ghc`
 version 9.6.4. The easiest way to install these tools locally is via
 [GHCup](https://www.haskell.org/ghcup/).
 
-- Run `install.sh`
-  - This should put a server executable at `bin/cn-lsp-server`, which is where
-    the debugging harness ([`bin/debug-server`](bin/debug-server)) expects to
-    find it
+Run `install.sh` to build and install the application executable. This will make
+the executable available in two places:
+- In `bin/cn-lsp-server`
+- In `~/.cabal/bin`
 
-If that succeeds, running the client should automatically start the server as a
+You should add `~/.cabal/bin` to your `$PATH` - this is the easiest way to let
+installed clients locate find the executable they need. See [our client's
+README](../client/README.md) for details on how it searches for a server
+executable.
+
+If all goes well, running the client should automatically start the server as a
 child process.
 
 The server requires a `cn` executable be available, and will fail to start
