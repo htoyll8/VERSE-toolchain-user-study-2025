@@ -1,9 +1,0 @@
-[submodule "cn/cerberus"]
-	path = cn/cerberus
-	url = git@github.com:GaloisInc/cerberus.git
-[submodule "cn/CN-pKVM-early-allocator-case-study"]
-	path = cn/CN-pKVM-early-allocator-case-study
-	url = git@github.com:rems-project/CN-pKVM-early-allocator-case-study.git
-[submodule "cn/cn-pKVM-buddy-allocator-case-study"]
-	path = cn/cn-pKVM-buddy-allocator-case-study
-	url = git@github.com:rems-project/cn-pKVM-buddy-allocator-case-study.git
