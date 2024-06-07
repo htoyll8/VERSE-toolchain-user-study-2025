@@ -6,7 +6,7 @@
         "url": "https://github.com/GaloisInc/VERSE-Toolchain",
         "type": "git"
     },
-    "version": "0.0.2",
+    "version": "0.0.3",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -25,6 +25,22 @@
         "typescript": "^5.4.0"
     },
     "contributes": {
+        "commands": [
+            {
+                "command": "CN.runOnFile",
+                "title": "CN: Run CN on the current file"
+            }
+        ],
+        "configuration": {
+            "title": "CN",
+            "properties": {
+                "CN.runOnSave": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Run CN whenever a file is saved"
+                }
+            }
+        },
         "grammars": [
             {
                 "path": "./syntaxes/cn.tmLanguage.json",
@@ -72,7 +88,7 @@
         "compile": "tsc --build",
         "watch": "tsc --build --watch",
         "dist": "vsce package",
-        "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+        "bundle": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
         "vscode:prepublish": "npm run bundle -- --minify"
     }
 }

@@ -25,3 +25,36 @@ the last step from VSCode's GUI:
 - Click on the ellipsis in the top-right portion of the Extensions pane
 - Select "Install from VSIX..."
 - Choose the `.vsix` file that was created by `npm run dist`
+
+
+# Running CN
+
+Running CN requires that the client be able to find and run a CN language
+server. [Our server's README](../server/README.md) has instructions for a basic
+installation. If you want to control the exact server the client uses, these are
+the locations the client will search (in order) for a server executable:
+- The `CN_LSP_SERVER` environment variable
+- The path `../server/bin/debug-server` - when running the client in development
+  mode, this path is well-defined, pointing to the [debugging
+  harness](../server/bin/debug-server) defined in this repo
+- On the current `PATH`, for an executable named `cn-lsp-server`
+
+If the client can't find a server in one of these places, it will report an
+error and fail to start.
+
+To run CN on the currently-open file, open the command palette (Cmd-Shift-P) and
+type "CN". You should see an option to run CN on the current file. If nothing is
+wrong, a window should appear to tell you that. If something is wrong, you
+should (hopefully) see CN errors rendered inline as red "squiggles", either in
+the current file or in a file it depends on.
+
+You can also choose to run CN on the current (`.c` or `.h`) file whenever it's
+saved, by opening settings (Cmd-,), searching for "CN", and selecting the
+checkbox for "Run On Save". You may not want to select this option if you're
+working with files where running CN is expensive, because the ability to cancel
+existing runs when new runs are requested hasn't (yet) been implemented, so you
+may end up with a number of orphaned CN processes.
+
+If the server fails to run CN or interpret its output, you can open up the
+"Output" pane (Cmd-Shift-U) and select "CN" from the dropdown menu on the right
+to see what output CN is producing and why the server is having trouble.
