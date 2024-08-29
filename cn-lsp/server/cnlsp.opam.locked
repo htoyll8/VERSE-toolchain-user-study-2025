@@ -26,8 +26,6 @@ depends: [
   "dune" {= "3.16.0"}
   "dune-configurator" {= "3.16.0"}
   "fmt" {= "0.9.0"}
-  "host-arch-arm64" {= "1"}
-  "host-system-other" {= "1"}
   "jsonrpc" {= "1.17.0"}
   "lem" {= "2022-12-10"}
   "linol" {= "0.6"}
