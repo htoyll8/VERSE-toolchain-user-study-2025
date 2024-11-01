@@ -4,8 +4,8 @@ Begin by installing OCaml and opam, if need be - here are
 [instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. CN and
 Cerberus currently recommend, and build with, OCaml 4.14.1, and that version was
 used to generate the lockfile which this installation process relies on. (I've
-also been able to work with other versions as recent as 5.1.1, and have included
-an alternate lockfile for 5.1.1 as well, but your mileage may vary.)
+also been able to work with other versions as recent as 5.1.1, but your mileage
+may vary.)
 
 I recommend creating and using an opam switch to maintain an isolated dependency
 installation and development environment:
