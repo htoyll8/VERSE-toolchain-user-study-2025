@@ -11,10 +11,10 @@ depends: [
   "base-bytes" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
-  "cerberus" {= "f1f118b26"}
-  "cerberus-lib" {= "f1f118b26"}
+  "cerberus" {= "b9daa22"}
+  "cerberus-lib" {= "b9daa22"}
   "cmdliner" {= "1.3.0"}
-  "cn" {= "f1f118b26"}
+  "cn" {= "b9daa22"}
   "conf-bash" {= "1"}
   "conf-c++" {= "1.0"}
   "conf-findutils" {= "1"}
@@ -84,15 +84,15 @@ build: [
 ]
 pin-depends: [
   [
-    "cerberus.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cerberus.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
   [
-    "cerberus-lib.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cerberus-lib.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
   [
-    "cn.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cn.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
 ]
