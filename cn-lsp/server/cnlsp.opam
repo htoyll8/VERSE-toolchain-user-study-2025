@@ -8,9 +8,9 @@ depends: [
   "dune" {>= "3.12"}
   "ocaml" {>= "4.14.1" & < "6.0.0"}
   "base" {>= "v0.16.3" & < "v0.18"}
-  "cerberus" {= "f1f118b26"}
-  "cerberus-lib" {= "f1f118b26"}
-  "cn" {= "f1f118b26"}
+  "cerberus" {= "b9daa22"}
+  "cerberus-lib" {= "b9daa22"}
+  "cn" {= "b9daa22"}
   "jsonrpc" {>= "1.17.0" & < "2.0.0"}
   "linol" {>= "0.6" & < "1.0"}
   "linol-lwt" {>= "0.6" & < "1.0"}
@@ -34,15 +34,15 @@ build: [
 ]
 pin-depends: [
   [
-    "cerberus.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cerberus.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
   [
-    "cerberus-lib.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cerberus-lib.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
   [
-    "cn.f1f118b26"
-    "git+https://github.com/rems-project/cerberus.git#f1f118b26"
+    "cn.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
   ]
 ]

@@ -99,9 +99,16 @@ module Cerb = struct
   ;;
 
   let frontend ((conf, impl, stdlib) : env) (filename : string) =
+    let cn_init_scope : CF.Cn_desugaring.init_scope =
+      { predicates = [ Cn.Alloc.Predicate.(str, sym, Some loc) ]
+      ; functions =
+          List.map Cn.Builtins.cn_builtin_fun_names ~f:(fun (str, sym) -> str, sym, None)
+      ; idents = [ Cn.Alloc.History.(str, sym, Some loc) ]
+      }
+    in
     let* _, ail_prog_opt, prog0 =
       CB.Pipeline.c_frontend_and_elaboration
-        ~cnnames:Cn.Builtins.cn_builtin_fun_names
+        ~cn_init_scope
         (conf, Cn.Setup.io)
         (stdlib, impl)
         ~filename
