@@ -70,8 +70,8 @@ class SingletonWebViewPanel {
             enableScripts: true,
 
             // And restrict the webview to only loading content from our
-            // extension's `media` directory.
-            localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
+            // extension's `webview` directory.
+            localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'webview')]
         };
     }
 
@@ -151,16 +151,8 @@ class SingletonWebViewPanel {
         */
     }
 
-    /*
-    public doRefactor() {
-        // Send a message to the webview webview.
-        // You can send any JSON serializable data.
-        this._panel.webview.postMessage({ command: 'refactor' });
-    }
-    */
-
     public postMessage(msg: any) {
-        this._panel.webview.postMessage({ command: 'refactor' });
+        this._panel.webview.postMessage(msg);
     }
 
     public dispose() {
@@ -180,6 +172,11 @@ class SingletonWebViewPanel {
     public setHtml(html: string) {
         this._panel.title = 'Coq Synthesis';
         this._panel.webview.html = html;
+    }
+
+    public getResourceUri(fileName: string): vscode.Uri {
+        const localUri = vscode.Uri.joinPath(this._extensionUri, 'webview', fileName)
+        return this._panel.webview.asWebviewUri(localUri);
     }
 
     /*
@@ -352,12 +349,42 @@ export function activate(context: vscode.ExtensionContext) {
             editBuilder.replace(span_range, s);
         });
 
-        let panel = SingletonWebViewPanel.createOrShow(context.extensionUri);
+        const treeResultFileName =
+            result_info['module_prefix'] + result_info['lemma_name'] + '.graph.json';
+        const treeResultPath = path.join(parent_dir, 'search-report', treeResultFileName);
+        const treeResultText = await fsPromises.readFile(treeResultPath, {'encoding': 'utf8'});
+        console.log(treeResultText);
+        const treeResult = JSON.parse(treeResultText);
+
+        const panel = SingletonWebViewPanel.createOrShow(context.extensionUri);
+        const treeJs = panel.getResourceUri('tree.js');
+        const treeCss = panel.getResourceUri('tree.css');
         panel.setHtml(`<!DOCTYPE html>
-            <html><body>
-            <h1>Hello, World!</h1>
-            </body></html>
+            <html>
+            <head>
+            <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+            <script src="http://d3js.org/d3.v3.min.js"></script>
+            <script src="${treeJs}"></script>
+            <link href="${treeCss}" rel="stylesheet" />
+            <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            </style>
+            <script>
+            window.addEventListener('message', (event) => {
+                renderTree(event.data);
+            }, false);
+            </script>
+            </head>
+            <body>
+            <div id="tree-container"></div>
+            </body>
+            </html>
         `);
+        panel.postMessage(treeResult);
     });
 
     context.subscriptions.push(disposable);
