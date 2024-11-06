@@ -325,11 +325,13 @@ export function activate(context: vscode.ExtensionContext) {
         const result_text = await fsPromises.readFile(result_path, {'encoding': 'utf8'});
         const result = JSON.parse(result_text);
         console.log('results', result);
+        // TODO: only paste in the proof if the search succeeds
         console.log(' === proof ===');
         for (let cmd of result[1]['commands']) {
             console.log(cmd['tactic']);
         }
-        const span = result[0][4];
+        const result_info = result[2];
+        const span = result_info['span'];
         const start = document.positionAt(span[1]);
         const end = document.positionAt(span[2]);
         const span_range = new vscode.Range(start, end);
