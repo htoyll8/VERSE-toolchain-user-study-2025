@@ -178,8 +178,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const file_path = document.uri.fsPath;
         const parent_dir = path.dirname(file_path);
-        // TODO: use --proof-line instead of lemma name
-        const proof_name = 'app_nil_r';
+        const proof_line = textEditor.selection.active.line;
 
 
         // Write buffer content to a temp file.  This lets proverbot see the
@@ -210,7 +209,7 @@ export function activate(context: vscode.ExtensionContext) {
                 proverbot_dir + '/src/search_file.py',
                 '--weightsfile', proverbot_dir + '/data/polyarg-weights.dat',
                 tempFilePath,
-                '--proof', proof_name,
+                '--proof-line', (1 + proof_line).toString(),
                 '--no-generate-report',
                 '--no-resume',
             ],
