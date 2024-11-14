@@ -283,9 +283,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         const document = textEditor.document;
 
-        // TODO:
-        // - Write buffer to a temp dir
-        // - Read results back from temp dir
+        // TODO: write buffer content to a temp dir (don't require user to save
+        // before running the plugin)
 
         // Make the buffer read-only.  The proof search returns a range of
         // characters to overwrite with the new proof, and those positions will
@@ -296,6 +295,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const file_path = document.uri.fsPath;
         const parent_dir = path.dirname(file_path);
+        // TODO: use --proof-line instead of lemma name
         const proof_name = 'app_nil_r';
 
         console.log('starting..');
@@ -317,11 +317,15 @@ export function activate(context: vscode.ExtensionContext) {
             ],
             'cwd': parent_dir,
         });
+        // TODO: properly handle bad exitStatus
+        // TODO: make buffer writable on error or cancellation
+        // TODO (style): use camelCase instead of snake_case consistently
         console.log('done', exitStatus);
         const result_path = path.join(parent_dir, 'search-report', path.basename(file_path, '.v') + '-proofs.txt');
         const result_text = await fsPromises.readFile(result_path, {'encoding': 'utf8'});
         const result = JSON.parse(result_text);
         console.log('results', result);
+        // TODO: check for success vs failure
         // TODO: only paste in the proof if the search succeeds
         console.log(' === proof ===');
         for (let cmd of result[1]['commands']) {
@@ -359,6 +363,7 @@ export function activate(context: vscode.ExtensionContext) {
         const panel = SingletonWebViewPanel.createOrShow(context.extensionUri);
         const treeJs = panel.getResourceUri('tree.js');
         const treeCss = panel.getResourceUri('tree.css');
+        // TODO: vendor jquery and d3 instead of relying on third-party cdns
         panel.setHtml(`<!DOCTYPE html>
             <html>
             <head>
