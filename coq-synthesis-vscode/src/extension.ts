@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import path from 'path';
-import fs from 'fs';
+//import fs from 'fs';
 import fsPromises from 'fs/promises';
+import crypto from 'crypto';
 import * as vscode from 'vscode';
 
 function runTerminalAsync(opts: vscode.TerminalOptions): Promise<vscode.TerminalExitStatus> {
@@ -168,9 +169,6 @@ export function activate(context: vscode.ExtensionContext) {
 
         const document = textEditor.document;
 
-        // TODO: write buffer content to a temp dir (don't require user to save
-        // before running the plugin)
-
         // Make the buffer read-only.  The proof search returns a range of
         // characters to overwrite with the new proof, and those positions will
         // be invalidated if the user modifies the file while the search is
@@ -182,6 +180,22 @@ export function activate(context: vscode.ExtensionContext) {
         const parent_dir = path.dirname(file_path);
         // TODO: use --proof-line instead of lemma name
         const proof_name = 'app_nil_r';
+
+
+        // Write buffer content to a temp file.  This lets proverbot see the
+        // current content even if the file hasn't been saved recently.
+        const filenameBase = path.basename(file_path, '.v')
+        const tempFileRandomness = crypto.randomBytes(16).toString('base64')
+            .replaceAll('/', '_').replaceAll('+', '\'').replaceAll('=', '');
+        const tempModuleName = `${filenameBase}__vscode_${tempFileRandomness}`;
+        const tempFileName = tempModuleName + '.v';
+        const tempFilePath = path.join(parent_dir, tempFileName);
+        await fsPromises.writeFile(tempFilePath, document.getText(), {
+            'mode': 0o600,
+            'flag': 'wx',
+        });
+        // TODO: clean up temp file on error
+        console.log('temp file = ', tempFilePath);
 
         console.log('starting..');
         const exitStatus = await runTerminalAsync({
@@ -195,7 +209,7 @@ export function activate(context: vscode.ExtensionContext) {
             'shellArgs': [
                 proverbot_dir + '/src/search_file.py',
                 '--weightsfile', proverbot_dir + '/data/polyarg-weights.dat',
-                file_path,
+                tempFilePath,
                 '--proof', proof_name,
                 '--no-generate-report',
                 '--no-resume',
@@ -206,7 +220,10 @@ export function activate(context: vscode.ExtensionContext) {
         // TODO: make buffer writable on error or cancellation
         // TODO (style): use camelCase instead of snake_case consistently
         console.log('done', exitStatus);
-        const result_path = path.join(parent_dir, 'search-report', path.basename(file_path, '.v') + '-proofs.txt');
+
+        await fsPromises.unlink(tempFilePath);
+
+        const result_path = path.join(parent_dir, 'search-report', tempModuleName + '-proofs.txt');
         const result_text = await fsPromises.readFile(result_path, {'encoding': 'utf8'});
         const result = JSON.parse(result_text);
         console.log('results', result);
@@ -221,6 +238,7 @@ export function activate(context: vscode.ExtensionContext) {
         const start = document.positionAt(span[1]);
         const end = document.positionAt(span[2]);
         const span_range = new vscode.Range(start, end);
+        // TODO: remove search-report files when finished
 
         console.log('make read-write');
         vscode.commands.executeCommand('workbench.action.files.setActiveEditorWriteableInSession');
