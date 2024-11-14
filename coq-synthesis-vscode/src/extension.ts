@@ -151,8 +151,8 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "coq-synthesis-vscode" is now active!');
 
     console.log('extensionPath = ', context.extensionPath);
-    const proverbot_dir = path.join(context.extensionPath, '..', 'proverbot9001-plugin');
-    console.log('proverbot dir = ', proverbot_dir);
+    const proverbotDir = path.join(context.extensionPath, '..', 'proverbot9001-plugin');
+    console.log('proverbot dir = ', proverbotDir);
 
     // The command has been defined in the package.json file
     // Now provide the implementation of the command with registerCommand
@@ -176,19 +176,19 @@ export function activate(context: vscode.ExtensionContext) {
         console.log('make readonly');
         vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
 
-        const file_path = document.uri.fsPath;
-        const parent_dir = path.dirname(file_path);
-        const proof_line = textEditor.selection.active.line;
+        const filePath = document.uri.fsPath;
+        const parentDir = path.dirname(filePath);
+        const proofLine = textEditor.selection.active.line;
 
 
         // Write buffer content to a temp file.  This lets proverbot see the
         // current content even if the file hasn't been saved recently.
-        const filenameBase = path.basename(file_path, '.v')
+        const filenameBase = path.basename(filePath, '.v')
         const tempFileRandomness = crypto.randomBytes(16).toString('base64')
             .replaceAll('/', '_').replaceAll('+', '\'').replaceAll('=', '');
         const tempModuleName = `${filenameBase}__vscode_${tempFileRandomness}`;
         const tempFileName = tempModuleName + '.v';
-        const tempFilePath = path.join(parent_dir, tempFileName);
+        const tempFilePath = path.join(parentDir, tempFileName);
         await fsPromises.writeFile(tempFilePath, document.getText(), {
             'mode': 0o600,
             'flag': 'wx',
@@ -204,27 +204,26 @@ export function activate(context: vscode.ExtensionContext) {
                 'viewColumn': vscode.ViewColumn.Beside,
                 'preserveFocus': true,
             },*/
-            'shellPath': proverbot_dir + '/venv/bin/python3',
+            'shellPath': proverbotDir + '/venv/bin/python3',
             'shellArgs': [
-                proverbot_dir + '/src/search_file.py',
-                '--weightsfile', proverbot_dir + '/data/polyarg-weights.dat',
+                proverbotDir + '/src/search_file.py',
+                '--weightsfile', proverbotDir + '/data/polyarg-weights.dat',
                 tempFilePath,
-                '--proof-line', (1 + proof_line).toString(),
+                '--proof-line', (1 + proofLine).toString(),
                 '--no-generate-report',
                 '--no-resume',
             ],
-            'cwd': parent_dir,
+            'cwd': parentDir,
         });
         // TODO: properly handle bad exitStatus
         // TODO: make buffer writable on error or cancellation
-        // TODO (style): use camelCase instead of snake_case consistently
         console.log('done', exitStatus);
 
         await fsPromises.unlink(tempFilePath);
 
-        const result_path = path.join(parent_dir, 'search-report', tempModuleName + '-proofs.txt');
-        const result_text = await fsPromises.readFile(result_path, {'encoding': 'utf8'});
-        const result = JSON.parse(result_text);
+        const resultPath = path.join(parentDir, 'search-report', tempModuleName + '-proofs.txt');
+        const resultText = await fsPromises.readFile(resultPath, {'encoding': 'utf8'});
+        const result = JSON.parse(resultText);
         console.log('results', result);
         // TODO: check for success vs failure
         // TODO: only paste in the proof if the search succeeds
@@ -232,11 +231,11 @@ export function activate(context: vscode.ExtensionContext) {
         for (let cmd of result[1]['commands']) {
             console.log(cmd['tactic']);
         }
-        const result_info = result[2];
-        const span = result_info['span'];
+        const resultInfo = result[2];
+        const span = resultInfo['span'];
         const start = document.positionAt(span[1]);
         const end = document.positionAt(span[2]);
-        const span_range = new vscode.Range(start, end);
+        const spanRange = new vscode.Range(start, end);
         // TODO: remove search-report files when finished
 
         console.log('make read-write');
@@ -252,12 +251,12 @@ export function activate(context: vscode.ExtensionContext) {
                 s += cmd['tactic'];
             }
             console.log('new text = ', s);
-            editBuilder.replace(span_range, s);
+            editBuilder.replace(spanRange, s);
         });
 
         const treeResultFileName =
-            result_info['module_prefix'] + result_info['lemma_name'] + '.graph.json';
-        const treeResultPath = path.join(parent_dir, 'search-report', treeResultFileName);
+            resultInfo['module_prefix'] + resultInfo['lemma_name'] + '.graph.json';
+        const treeResultPath = path.join(parentDir, 'search-report', treeResultFileName);
         const treeResultText = await fsPromises.readFile(treeResultPath, {'encoding': 'utf8'});
         console.log(treeResultText);
         const treeResult = JSON.parse(treeResultText);
