@@ -172,137 +172,178 @@ export function activate(context: vscode.ExtensionContext) {
     // Now provide the implementation of the command with registerCommand
     // The commandId parameter must match the command field in package.json
     const disposable = vscode.commands.registerCommand('coq-synthesis-vscode.helloWorld', async () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from coq-synthesis-vscode!');
+        // List of cleanup operations.  Functions from this list are run in
+        // reverse order in the `finally` block.
+        const cleanup = [];
+        try {
+            // The code you place here will be executed every time your command is executed
+            // Display a message box to the user
+            vscode.window.showInformationMessage('Hello World from coq-synthesis-vscode!');
 
-        const textEditor = vscode.window.activeTextEditor;
-        if (textEditor == null) {
-            return;
-        }
+            const textEditor = vscode.window.activeTextEditor;
+            if (textEditor == null) {
+                return;
+            }
 
-        const document = textEditor.document;
+            const document = textEditor.document;
 
-        // Make the buffer read-only.  The proof search returns a range of
-        // characters to overwrite with the new proof, and those positions will
-        // be invalidated if the user modifies the file while the search is
-        // running.
-        console.log('make readonly');
-        vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+            // Make the buffer read-only.  The proof search returns a range of
+            // characters to overwrite with the new proof, and those positions will
+            // be invalidated if the user modifies the file while the search is
+            // running.
+            console.log('make readonly');
+            // TODO: If the buffer is already readonly, we should skip these
+            // steps.  However, the read-only status doesn't seem to be exposed
+            // in the extension API.
+            vscode.commands.executeCommand(
+                'workbench.action.files.setActiveEditorReadonlyInSession');
+            cleanup.push(async () => {
+                // Note that we may make the buffer writable below in order to
+                // insert the synthesized proof.  In that case, this cleanup
+                // will be a no-op.
+                console.log('cleanup: make writeable');
+                vscode.commands.executeCommand(
+                    'workbench.action.files.setActiveEditorWriteableInSession');
+            });
 
-        const filePath = document.uri.fsPath;
-        const parentDir = path.dirname(filePath);
-        const proofLine = textEditor.selection.active.line;
+            const filePath = document.uri.fsPath;
+            const parentDir = path.dirname(filePath);
+            const proofLine = textEditor.selection.active.line;
 
 
-        // Write buffer content to a temp file.  This lets proverbot see the
-        // current content even if the file hasn't been saved recently.
-        const filenameBase = path.basename(filePath, '.v')
-        const tempFileRandomness = crypto.randomBytes(16).toString('base64')
-            .replaceAll('/', '_').replaceAll('+', '\'').replaceAll('=', '');
-        const tempModuleName = `${filenameBase}__vscode_${tempFileRandomness}`;
-        const tempFileName = tempModuleName + '.v';
-        const tempFilePath = path.join(parentDir, tempFileName);
-        await fsPromises.writeFile(tempFilePath, document.getText(), {
-            'mode': 0o600,
-            'flag': 'wx',
-        });
-        // TODO: clean up temp file on error
-        console.log('temp file = ', tempFilePath);
+            // Write buffer content to a temp file.  This lets proverbot see the
+            // current content even if the file hasn't been saved recently.
+            const filenameBase = path.basename(filePath, '.v')
+            const tempFileRandomness = crypto.randomBytes(16).toString('base64')
+                .replaceAll('/', '_').replaceAll('+', '\'').replaceAll('=', '');
+            const tempModuleName = `${filenameBase}__vscode_${tempFileRandomness}`;
+            const tempFileName = tempModuleName + '.v';
+            const tempFilePath = path.join(parentDir, tempFileName);
+            await fsPromises.writeFile(tempFilePath, document.getText(), {
+                'mode': 0o600,
+                'flag': 'wx',
+            });
+            cleanup.push(async () => {
+                console.log('cleanup: remove ' + tempFilePath);
+                await fsPromises.unlink(tempFilePath);
+            });
+            console.log('temp file = ', tempFilePath);
 
-        console.log('starting..');
-        const wrapperScript = path.join(context.extensionPath, 'scripts', 'wait_on_error.sh');
-        const exitCode = await runTerminalAsync({
-            'name': 'Proofster',
-            'message': 'Running proof search...\r\n',
-            'shellPath': wrapperScript,
-            'shellArgs': [
-                proverbotDir + '/venv/bin/python3',
-                proverbotDir + '/src/search_file.py',
-                '--weightsfile', proverbotDir + '/data/polyarg-weights.dat',
-                tempFilePath,
-                '--proof-line', (1 + proofLine).toString(),
-                '--no-generate-report',
-                '--no-resume',
-            ],
-            'cwd': parentDir,
-        });
-        // TODO: properly handle bad exitCode
-        // TODO: make buffer writable on error or cancellation
-        console.log('done', exitCode);
+            console.log('starting..');
+            const wrapperScript = path.join(context.extensionPath, 'scripts', 'wait_on_error.sh');
+            const exitCode = await runTerminalAsync({
+                'name': 'Proofster',
+                'message': 'Running proof search...\r\n',
+                'shellPath': wrapperScript,
+                'shellArgs': [
+                    proverbotDir + '/venv/bin/python3',
+                    proverbotDir + '/src/search_file.py',
+                    '--weightsfile', proverbotDir + '/data/polyarg-weights.dat',
+                    tempFilePath,
+                    '--proof-line', (1 + proofLine).toString(),
+                    '--no-generate-report',
+                    '--no-resume',
+                ],
+                'cwd': parentDir,
+            });
+            console.log('done', exitCode);
+            if (exitCode != 0) {
+                vscode.window.showErrorMessage(
+                    'Proof synthesis failed: exit code = ' + exitCode);
+                return;
+            }
 
-        await fsPromises.unlink(tempFilePath);
+            const resultPath = path.join(parentDir, 'search-report', tempModuleName + '-proofs.txt');
+            cleanup.push(async () => {
+                console.log('cleanup: remove ' + resultPath);
+                await fsPromises.unlink(resultPath);
+            });
+            const resultText = await fsPromises.readFile(resultPath, {'encoding': 'utf8'});
+            const result = JSON.parse(resultText);
+            const [resultDesc, resultProof, resultInfo] = result;
 
-        const resultPath = path.join(parentDir, 'search-report', tempModuleName + '-proofs.txt');
-        const resultText = await fsPromises.readFile(resultPath, {'encoding': 'utf8'});
-        const result = JSON.parse(resultText);
-        console.log('results', result);
-        // TODO: check for success vs failure
-        // TODO: only paste in the proof if the search succeeds
-        console.log(' === proof ===');
-        for (let cmd of result[1]['commands']) {
-            console.log(cmd['tactic']);
-        }
-        const resultInfo = result[2];
-        const span = resultInfo['span'];
-        const start = document.positionAt(span[1]);
-        const end = document.positionAt(span[2]);
-        const spanRange = new vscode.Range(start, end);
-        // TODO: remove search-report files when finished
+            // TODO: show proof tree even on failure
+            if (resultProof['status'] != 'SUCCESS') {
+                vscode.window.showErrorMessage(
+                    'Proof synthesis failed: status = ' + resultProof['status']);
+                return;
+            }
 
-        console.log('make read-write');
-        vscode.commands.executeCommand('workbench.action.files.setActiveEditorWriteableInSession');
+            console.log(' === proof ===');
+            for (let cmd of resultProof['commands']) {
+                console.log(cmd['tactic']);
+            }
+            const span = resultInfo['span'];
+            const start = document.positionAt(span[1]);
+            const end = document.positionAt(span[2]);
+            const spanRange = new vscode.Range(start, end);
 
-        console.log('applying edit');
-        textEditor.edit((editBuilder) => {
-            let s = '';
-            for (let cmd of result[1]['commands']) {
-                if (s != '') {
-                    s += '\n';
+            console.log('make read-write');
+            vscode.commands.executeCommand(
+                'workbench.action.files.setActiveEditorWriteableInSession');
+
+            console.log('applying edit');
+            textEditor.edit((editBuilder) => {
+                let s = '';
+                for (let cmd of resultProof['commands']) {
+                    if (s != '') {
+                        s += '\n';
+                    }
+                    s += cmd['tactic'];
                 }
-                s += cmd['tactic'];
-            }
-            console.log('new text = ', s);
-            editBuilder.replace(spanRange, s);
-        });
+                console.log('new text = ', s);
+                editBuilder.replace(spanRange, s);
+            });
 
-        const treeResultFileName =
-            resultInfo['module_prefix'] + resultInfo['lemma_name'] + '.graph.json';
-        const treeResultPath = path.join(parentDir, 'search-report', treeResultFileName);
-        const treeResultText = await fsPromises.readFile(treeResultPath, {'encoding': 'utf8'});
-        console.log(treeResultText);
-        const treeResult = JSON.parse(treeResultText);
+            const treeResultFileName =
+                resultInfo['module_prefix'] + resultInfo['lemma_name'] + '.graph.json';
+            const treeResultPath = path.join(parentDir, 'search-report', treeResultFileName);
+            cleanup.push(async () => {
+                console.log('cleanup: remove ' + treeResultPath);
+                await fsPromises.unlink(treeResultPath);
+            });
+            const treeResultText = await fsPromises.readFile(treeResultPath, {'encoding': 'utf8'});
+            console.log(treeResultText);
+            const treeResult = JSON.parse(treeResultText);
 
-        const panel = SingletonWebViewPanel.createOrShow(context.extensionUri);
-        const treeJs = panel.getResourceUri('tree.js');
-        const treeCss = panel.getResourceUri('tree.css');
-        // TODO: vendor jquery and d3 instead of relying on third-party cdns
-        panel.setHtml(`<!DOCTYPE html>
-            <html>
-            <head>
-            <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
-            <script src="http://d3js.org/d3.v3.min.js"></script>
-            <script src="${treeJs}"></script>
-            <link href="${treeCss}" rel="stylesheet" />
-            <style>
-            body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
+            const panel = SingletonWebViewPanel.createOrShow(context.extensionUri);
+            const treeJs = panel.getResourceUri('tree.js');
+            const treeCss = panel.getResourceUri('tree.css');
+            // TODO: vendor jquery and d3 instead of relying on third-party cdns
+            panel.setHtml(`<!DOCTYPE html>
+                <html>
+                <head>
+                <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+                <script src="http://d3js.org/d3.v3.min.js"></script>
+                <script src="${treeJs}"></script>
+                <link href="${treeCss}" rel="stylesheet" />
+                <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                }
+                </style>
+                <script>
+                window.addEventListener('message', (event) => {
+                    renderTree(event.data);
+                }, false);
+                </script>
+                </head>
+                <body>
+                <div id="tree-container"></div>
+                </body>
+                </html>
+            `);
+            panel.postMessage(treeResult);
+        } finally {
+            while (cleanup.length > 0) {
+                const f = cleanup.pop();
+                if (f != null) {
+                    await f();
+                }
             }
-            </style>
-            <script>
-            window.addEventListener('message', (event) => {
-                renderTree(event.data);
-            }, false);
-            </script>
-            </head>
-            <body>
-            <div id="tree-container"></div>
-            </body>
-            </html>
-        `);
-        panel.postMessage(treeResult);
+        }
     });
 
     context.subscriptions.push(disposable);
