@@ -6,18 +6,32 @@ import fsPromises from 'fs/promises';
 import crypto from 'crypto';
 import * as vscode from 'vscode';
 
-function runTerminalAsync(opts: vscode.TerminalOptions): Promise<vscode.TerminalExitStatus> {
+// Run a process in a new terminal and wait for it to report an exit code.
+// This can happen by the process exiting completely (in which case the
+// terminal also closes automatically), or by the process reporting an exit
+// code through the shell integration API (in which case the terminal might
+// remain open, e.g. to show an error message).
+function runTerminalAsync(opts: vscode.TerminalOptions): Promise<number> {
+    // TODO: close old terminal (if it still exists) before creating a new one
     const term = vscode.window.createTerminal(opts);
     term.show();
     return new Promise((resolve, reject) => {
         const token = vscode.window.onDidCloseTerminal((closedTerm) => {
             if (closedTerm === term) {
                 token.dispose();
-                if (term.exitStatus == null) {
+                token2.dispose();
+                if (term.exitStatus == null || term.exitStatus.code == null) {
                     reject('terminal closed with no exit status');
                     return;
                 }
-                resolve(term.exitStatus);
+                resolve(term.exitStatus.code);
+            }
+        });
+        const token2 = vscode.window.onDidEndTerminalShellExecution((ev) => {
+            if (ev.terminal === term && ev.exitCode != null) {
+                token.dispose();
+                token2.dispose();
+                resolve(ev.exitCode);
             }
         });
     });
@@ -197,15 +211,13 @@ export function activate(context: vscode.ExtensionContext) {
         console.log('temp file = ', tempFilePath);
 
         console.log('starting..');
-        const exitStatus = await runTerminalAsync({
+        const wrapperScript = path.join(context.extensionPath, 'scripts', 'wait_on_error.sh');
+        const exitCode = await runTerminalAsync({
             'name': 'Proofster',
             'message': 'Running proof search...\r\n',
-            /*'location': {
-                'viewColumn': vscode.ViewColumn.Beside,
-                'preserveFocus': true,
-            },*/
-            'shellPath': proverbotDir + '/venv/bin/python3',
+            'shellPath': wrapperScript,
             'shellArgs': [
+                proverbotDir + '/venv/bin/python3',
                 proverbotDir + '/src/search_file.py',
                 '--weightsfile', proverbotDir + '/data/polyarg-weights.dat',
                 tempFilePath,
@@ -215,9 +227,9 @@ export function activate(context: vscode.ExtensionContext) {
             ],
             'cwd': parentDir,
         });
-        // TODO: properly handle bad exitStatus
+        // TODO: properly handle bad exitCode
         // TODO: make buffer writable on error or cancellation
-        console.log('done', exitStatus);
+        console.log('done', exitCode);
 
         await fsPromises.unlink(tempFilePath);
 
