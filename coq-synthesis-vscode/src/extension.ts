@@ -202,6 +202,8 @@ export function activate(context: vscode.ExtensionContext) {
                 // insert the synthesized proof.  In that case, this cleanup
                 // will be a no-op.
                 console.log('cleanup: make writeable');
+                // Restore editor focus.  See below for why we need this.
+                await vscode.window.showTextDocument(document, textEditor.viewColumn);
                 vscode.commands.executeCommand(
                     'workbench.action.files.setActiveEditorWriteableInSession');
             });
@@ -256,45 +258,15 @@ export function activate(context: vscode.ExtensionContext) {
             const resultPath = path.join(parentDir, 'search-report', tempModuleName + '-proofs.txt');
             cleanup.push(async () => {
                 console.log('cleanup: remove ' + resultPath);
-                await fsPromises.unlink(resultPath);
+                //await fsPromises.unlink(resultPath);
             });
             const resultText = await fsPromises.readFile(resultPath, {'encoding': 'utf8'});
             const result = JSON.parse(resultText);
             const [resultDesc, resultProof, resultInfo] = result;
 
-            // TODO: show proof tree even on failure
-            if (resultProof['status'] != 'SUCCESS') {
-                vscode.window.showErrorMessage(
-                    'Proof synthesis failed: status = ' + resultProof['status']);
-                return;
-            }
 
-            console.log(' === proof ===');
-            for (let cmd of resultProof['commands']) {
-                console.log(cmd['tactic']);
-            }
-            const span = resultInfo['span'];
-            const start = document.positionAt(span[1]);
-            const end = document.positionAt(span[2]);
-            const spanRange = new vscode.Range(start, end);
-
-            console.log('make read-write');
-            vscode.commands.executeCommand(
-                'workbench.action.files.setActiveEditorWriteableInSession');
-
-            console.log('applying edit');
-            textEditor.edit((editBuilder) => {
-                let s = '';
-                for (let cmd of resultProof['commands']) {
-                    if (s != '') {
-                        s += '\n';
-                    }
-                    s += cmd['tactic'];
-                }
-                console.log('new text = ', s);
-                editBuilder.replace(spanRange, s);
-            });
-
+            // Display proof tree.  We show this regardless of the synthesis
+            // result.
             const treeResultFileName =
                 resultInfo['module_prefix'] + resultInfo['lemma_name'] + '.graph.json';
             const treeResultPath = path.join(parentDir, 'search-report', treeResultFileName);
@@ -336,6 +308,50 @@ export function activate(context: vscode.ExtensionContext) {
                 </html>
             `);
             panel.postMessage(treeResult);
+
+
+            // Paste the synthesized proof into the buffer, replacing the
+            // current proof.  This happens only if the synthesis succeeded.
+            if (resultProof['status'] != 'SUCCESS') {
+                vscode.window.showErrorMessage(
+                    'Proof synthesis failed: status = ' + resultProof['status']);
+                return;
+            }
+
+            console.log(' === proof ===');
+            for (let cmd of resultProof['commands']) {
+                console.log(cmd['tactic']);
+            }
+            const span = resultInfo['span'];
+            const start = document.positionAt(span[1]);
+            const end = document.positionAt(span[2]);
+            const spanRange = new vscode.Range(start, end);
+
+            console.log('make read-write');
+            // Restore focus to the editor so we can make it writeable.
+            // Passing the same `viewColumn` here causes vscode to focus the
+            // existing editor in that column, instead of creating a new one in
+            // the currently focused colum (which may be the side column where
+            // the proof tree is now displayed).
+            await vscode.window.showTextDocument(document, textEditor.viewColumn);
+            vscode.commands.executeCommand(
+                'workbench.action.files.setActiveEditorWriteableInSession');
+
+            console.log('applying edit');
+            textEditor.edit((editBuilder) => {
+                let s = '';
+                for (let cmd of resultProof['commands']) {
+                    if (s != '') {
+                        s += '\n';
+                    }
+                    s += cmd['tactic'];
+                }
+                console.log('new text = ', s);
+                editBuilder.replace(spanRange, s);
+            });
+
+            console.log('all done');
+
         } finally {
             while (cleanup.length > 0) {
                 const f = cleanup.pop();
