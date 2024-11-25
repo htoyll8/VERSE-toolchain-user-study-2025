@@ -159,23 +159,31 @@ class SingletonWebViewPanel {
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "coq-synthesis-vscode" is now active!');
-
-    console.log('extensionPath = ', context.extensionPath);
-    const proverbotDir = path.join(context.extensionPath, '..', 'proverbot9001-plugin');
-    console.log('proverbot dir = ', proverbotDir);
-
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
     const disposable = vscode.commands.registerCommand('coq-synthesis-vscode.synthesizeProof', async () => {
         // List of cleanup operations.  Functions from this list are run in
         // reverse order in the `finally` block.
         const cleanup = [];
         try {
+            const config = vscode.workspace.getConfiguration('coq-synthesis-vscode');
+            const proverbotDir: string | undefined = config.get('proverbot9001.path');
+            if (proverbotDir == null || proverbotDir == '') {
+                vscode.window.showErrorMessage(
+                    'The `proverbot9001.path` setting must be set before using this command.');
+                return;
+            }
+            let pythonExe = config.get('proverbot9001.pythonInterpreter');
+            if (pythonExe == '') {
+                pythonExe = path.join(proverbotDir, 'venv/bin/python3');
+            }
+
+            let extraEnv: {
+                OPAMSWITCH?: string
+            } = {};
+            let opamSwitch: string | undefined = config.get('proverbot9001.opamSwitch');
+            if (opamSwitch != null && opamSwitch != '') {
+                extraEnv['OPAMSWITCH'] = opamSwitch;
+            }
+
             const textEditor = vscode.window.activeTextEditor;
             if (textEditor == null) {
                 return;
@@ -243,6 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
                     '--no-resume',
                 ],
                 'cwd': parentDir,
+                'env': extraEnv,
             });
             console.log('done', exitCode);
             if (exitCode != 0) {

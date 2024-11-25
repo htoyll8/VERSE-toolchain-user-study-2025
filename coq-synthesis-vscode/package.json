@@ -21,7 +21,34 @@
         "command": "coq-synthesis-vscode.synthesizeProof",
         "title": "Synthesize Proof"
       }
-    ]
+    ],
+    "configuration": {
+			"type": "object",
+			"title": "Coq proof synthesis",
+      "properties": {
+        "coq-synthesis-vscode.proverbot9001.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to `proverbot9001` checkout",
+          "order": 1,
+          "scope": "machine"
+        },
+        "coq-synthesis-vscode.proverbot9001.pythonInterpreter": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the Python interpreter to use for `proverbot9001`.  Default: `#coq-synthesis-vscode.proverbot9001.path#` + `/venv/bin/python3`",
+          "order": 2,
+          "scope": "machine"
+        },
+        "coq-synthesis-vscode.proverbot9001.opamSwitch": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Which opam switch to use when running `proverbot9001`.  This switch must have the `sertop` binary installed from the `coq-serapi` package.  Default: use the currently active switch as reported by `opam switch show`.",
+          "order": 3,
+          "scope": "machine"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
