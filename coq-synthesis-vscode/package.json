@@ -14,8 +14,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "coq-synthesis-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "coq-synthesis-vscode.synthesizeProof",
+        "title": "Synthesize Proof"
       }
     ]
   },

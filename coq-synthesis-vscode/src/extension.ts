@@ -171,15 +171,11 @@ export function activate(context: vscode.ExtensionContext) {
     // The command has been defined in the package.json file
     // Now provide the implementation of the command with registerCommand
     // The commandId parameter must match the command field in package.json
-    const disposable = vscode.commands.registerCommand('coq-synthesis-vscode.helloWorld', async () => {
+    const disposable = vscode.commands.registerCommand('coq-synthesis-vscode.synthesizeProof', async () => {
         // List of cleanup operations.  Functions from this list are run in
         // reverse order in the `finally` block.
         const cleanup = [];
         try {
-            // The code you place here will be executed every time your command is executed
-            // Display a message box to the user
-            vscode.window.showInformationMessage('Hello World from coq-synthesis-vscode!');
-
             const textEditor = vscode.window.activeTextEditor;
             if (textEditor == null) {
                 return;
@@ -234,7 +230,7 @@ export function activate(context: vscode.ExtensionContext) {
             console.log('starting..');
             const wrapperScript = path.join(context.extensionPath, 'scripts', 'wait_on_error.sh');
             const exitCode = await runTerminalAsync({
-                'name': 'Proofster',
+                'name': 'Coq proof synthesis',
                 'message': 'Running proof search...\r\n',
                 'shellPath': wrapperScript,
                 'shellArgs': [
