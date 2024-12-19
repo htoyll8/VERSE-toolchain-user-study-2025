@@ -249,6 +249,7 @@ export function activate(context: vscode.ExtensionContext) {
                     '--proof-line', (1 + proofLine).toString(),
                     '--no-generate-report',
                     '--no-resume',
+                    '--auto-search-prefix',
                 ],
                 'cwd': parentDir,
                 'env': extraEnv,
