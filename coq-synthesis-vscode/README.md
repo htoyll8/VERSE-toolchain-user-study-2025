@@ -20,6 +20,9 @@ Proverbot setup:
   ```sh
   git clone https://github.com/GaloisInc/proverbot9001
   cd proverbot9001
+  # The Proverbot changes required for this plugin
+  # are currently on the `verse` brach
+  git checkout verse
   git submodule update --init dataloader/gestalt-ratio/
   ```
 
@@ -60,7 +63,9 @@ Proverbot setup:
   ```
 
 * In the `proverbot9001` directory, create a Python virtualenv containing the
-  Python dependencies:
+  Python dependencies.  This requires Python version 3.9 - 3.12; the latest
+  Python version, 3.13, currently isn't compatible with PyTorch (see
+  [pytorch#130249](https://github.com/pytorch/pytorch/issues/130249)).
 
   ```sh
   cd proverbot9001
@@ -84,7 +89,7 @@ Proverbot setup:
 * Build the `.vsix` package:
 
   ```sh
-  cd proof-synthesis-vscode
+  cd coq-synthesis-vscode
   # Install node.js dependencies
   npm install
   # Build the package
