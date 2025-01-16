@@ -32,3 +32,6 @@ Some ideas for improving the plugin:
   complete proof, it would be nice to provide a way for the user to paste in a
   partial proof from the search tree view.  For example, let the user click on
   a node in the tree to insert the sequence of tactics leading up to that node.
+- The Python script currently prints a bunch of warnings from numpy and/or
+  pytorch.  We should investigate and fix these warnings so that users don't
+  mistakenly think that the script is broken.
