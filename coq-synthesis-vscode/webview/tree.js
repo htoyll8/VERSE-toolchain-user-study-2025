@@ -386,6 +386,10 @@ function renderTree(treeData) {
         var newHeight = d3.max(levelWidth) * 25; // 25 pixels per line  
         tree = tree.size([newHeight, viewerWidth]);
 
+        var div = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
         // Compute the new tree layout.
         var nodes = tree.nodes(root).reverse(),
             links = tree.links(nodes);
@@ -419,6 +423,30 @@ function renderTree(treeData) {
             .attr("r", 0)
             .style("fill", function(d) {
                 return d._children ? "lightsteelblue" : "#fff";
+            })
+
+            // Proof state != Tree state (e.g., background/foreground goal).
+            // Most likely coming from Proverbot... look at it's return data. 
+            .on('mouseover', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', '.85');
+                //Makes the new div appear on hover:
+                div.transition()
+                    .duration(50)
+                    .style("opacity", .9);
+                // State: 
+                div.html("Name: " + d.name + "<br/># Child: " + (d.childCount || "No data"))
+                    .style("left", (event.pageX) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+                    })
+            .on('mouseout', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', '1');
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
             });
 
         nodeEnter.append("text")
