@@ -418,6 +418,18 @@ function renderTree(treeData) {
             })
             .on('click', click);
 
+        function getProofScript(d, tail) {
+            var scriptTail = d.name + " " + tail;
+            var parent = d.parent;
+            if (parent) {
+                if (parent.name === "Proof.") {
+                    return "Proof. " + scriptTail;
+                }
+                return getProofScript(parent, scriptTail);
+            }
+            return scriptTail;
+        }
+
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
             .attr("r", 0)
@@ -447,6 +459,19 @@ function renderTree(treeData) {
                 div.transition()
                     .duration(500)
                     .style("opacity", 0);
+            })
+
+            .on('contextmenu', function(d, i){
+                d3.event.preventDefault();
+
+                // collect proof script up to node
+                var script = getProofScript(d, "");
+                
+                // copy the proof script to clipboard
+                navigator.clipboard.writeText(script);
+
+                // give a notification of script copied successfully
+                // TODO
             });
 
         nodeEnter.append("text")
