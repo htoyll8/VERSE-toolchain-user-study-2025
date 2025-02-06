@@ -582,4 +582,19 @@ function renderTree(treeData) {
     // Layout the tree initially and center on the root node.
     update(root);
     centerNode(root);
+
+    // Add listener for dynamic panel re-sizing 
+    window.addEventListener('resize', function() {
+        // retrieve new width and height after re-sizing
+        viewerWidth = $(window).width();
+        viewerHeight = $(window).height();
+        
+        // update the attributes
+        d3.select("svg")
+            .attr("width", viewerWidth)
+            .attr("height", viewerHeight);
+
+        // re-center the root node
+        centerNode(root);
+    });
 }
