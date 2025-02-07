@@ -419,11 +419,11 @@ function renderTree(treeData) {
             .on('click', click);
 
         function getProofScript(d, tail) {
-            var scriptTail = d.name + " " + tail;
+            var scriptTail = d.name + "\n" + tail;
             var parent = d.parent;
             if (parent) {
                 if (parent.name === "Proof.") {
-                    return "Proof. " + scriptTail;
+                    return "Proof.\n" + scriptTail;
                 }
                 return getProofScript(parent, scriptTail);
             }
@@ -471,7 +471,25 @@ function renderTree(treeData) {
                 navigator.clipboard.writeText(script);
 
                 // give a notification of script copied successfully
-                // TODO
+                var notification = d3.select("body")
+                    .append("div")
+                    .style("position", "absolute")
+                    .style("left", `${d3.event.pageX}px`)
+                    .style("top", `${d3.event.pageY}px`)
+                    .style("background", "white")
+                    .style("color", "black")
+                    .style("padding", "8px")
+                    .style("border-radius", "5px")
+                    .style("border", "1px solid black")
+                    .style("opacity", 1)
+                    .style("pointer-events", "none") 
+                    .text("Proof script copied to clipboard!");
+
+                // fade out and remove after 2 seconds
+                notification.transition()
+                    .duration(2000)
+                    .style("opacity", 0)
+                    .on("end", function() { notification.remove(); });
             });
 
         nodeEnter.append("text")
