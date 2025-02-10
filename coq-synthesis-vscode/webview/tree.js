@@ -429,37 +429,67 @@ function renderTree(treeData) {
             }
             return scriptTail;
         }
-
+        
+        console.log("Proof state: " + window.proofStates);
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
             .attr("r", 0)
             .style("fill", function(d) {
+                // return d._children ? "red" : "#fff";
                 return d._children ? "lightsteelblue" : "#fff";
             })
 
             // Proof state != Tree state (e.g., background/foreground goal).
             // Most likely coming from Proverbot... look at it's return data. 
+
             .on('mouseover', function (d, i) {
                 d3.select(this).transition()
                     .duration(50)
                     .attr('opacity', '.85');
-                //Makes the new div appear on hover:
+            
                 div.transition()
                     .duration(50)
                     .style("opacity", .9);
-                // State: 
-                div.html("Name: " + d.name + "<br/># Child: " + (d.childCount || "No data"))
+            
+                // Find the proof state matching the node's tactic name
+                let proofState = null;
+                for (const key in proofStates) {
+                    if (proofStates.hasOwnProperty(key) && proofStates[key].tactic === d.name) {
+                        proofState = proofStates[key];
+                        break; // Stop iterating after finding a match
+                    }
+                }
+            
+                let proofStateString = "No proof state available"; // Default message
+            
+                if (proofState) {
+                    proofStateString = `Tactic: ${proofState.tactic}<br/>` +
+                                       `fgGoals: ${proofState.fgGoals.length}<br/>` +
+                                       `bgGoals: ${proofState.bgGoals.length}<br/>` +
+                                       `givenUpGoals: ${proofState.givenUpGoals.length}<br/>` +
+                                       `shelvedGoals: ${proofState.shelvedGoals.length}`;
+                }
+            
+                // Display the formatted information
+                div.html(`Name: ${d.name}<br/># Child: ${d.childCount || "No data"}<br/><br/>Proof State:<br/>${proofStateString}`)
                     .style("left", (event.pageX) + "px")
-                    .style("top", (event.pageY - 28) + "px");
-                    })
+                    .style("top", (event.pageY - 28) + "px")
+                    .style("background-color", "rgba(0, 0, 0, 0.8)") // Dark background with opacity
+                    .style("color", "#FFFFFF") // White text
+                    .style("padding", "5px") // Add some padding for readability
+                    .style("border-radius", "5px"); // Optional: Add rounded corners
+            })
+
             .on('mouseout', function (d, i) {
                 d3.select(this).transition()
                     .duration(50)
                     .attr('opacity', '1');
+            
                 div.transition()
                     .duration(500)
                     .style("opacity", 0);
             })
+            
 
             .on('contextmenu', function(d, i){
                 d3.event.preventDefault();

@@ -332,7 +332,9 @@ export function activate(context: vscode.ExtensionContext) {
                 </style>
                 <script>
                 window.addEventListener('message', (event) => {
-                    renderTree(event.data);
+                    const { treeResult, proofStates } = event.data;
+                    renderTree(treeResult);
+                    window.proofStates = proofStates;
                 }, false);
                 </script>
                 </head>
@@ -341,7 +343,10 @@ export function activate(context: vscode.ExtensionContext) {
                 </body>
                 </html>
             `);
-            panel.postMessage(treeResult);
+            panel.postMessage({
+                treeResult, 
+                proofStates
+            });
 
 
             // Paste the synthesized proof into the buffer, replacing the
