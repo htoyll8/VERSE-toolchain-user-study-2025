@@ -5,6 +5,7 @@ import path from 'path';
 import fsPromises from 'fs/promises';
 import crypto from 'crypto';
 import * as vscode from 'vscode';
+import { Goal, Command, ProofStatesDict } from './types';
 
 // Run a process in a new terminal and wait for it to report an exit code.
 // This can happen by the process exiting completely (in which case the
@@ -269,7 +270,33 @@ export function activate(context: vscode.ExtensionContext) {
             const resultText = await fsPromises.readFile(resultPath, {'encoding': 'utf8'});
             const result = JSON.parse(resultText);
             const [resultDesc, resultProof, resultInfo] = result;
-
+              
+            const proofStates: ProofStatesDict = resultProof.commands.reduce((acc: ProofStatesDict, command: Command, index: number) => {
+                const { tactic, context_before } = command;
+                const { fg_goals, bg_goals, given_up_goals, shelved_goals } = context_before;
+                
+                acc[index] = {
+                  tactic,
+                  fgGoals: fg_goals.map((goal: Goal) => ({
+                    hypotheses: goal.hypotheses,
+                    goal: goal.goal
+                  })),
+                  bgGoals: bg_goals.map((goal: Goal) => ({
+                    hypotheses: goal.hypotheses,
+                    goal: goal.goal
+                  })),
+                  givenUpGoals: given_up_goals.map((goal: Goal) => ({
+                    hypotheses: goal.hypotheses,
+                    goal: goal.goal
+                  })),
+                  shelvedGoals: shelved_goals.map((goal: Goal) => ({
+                    hypotheses: goal.hypotheses,
+                    goal: goal.goal
+                  }))
+                };
+                
+                return acc;
+            }, {});
 
             // Display proof tree.  We show this regardless of the synthesis
             // result.
@@ -281,6 +308,7 @@ export function activate(context: vscode.ExtensionContext) {
                 await fsPromises.unlink(treeResultPath);
             });
             const treeResultText = await fsPromises.readFile(treeResultPath, {'encoding': 'utf8'});
+            console.log(treeResultText);
             console.log(treeResultText);
             const treeResult = JSON.parse(treeResultText);
 
