@@ -440,7 +440,6 @@ function renderTree(treeData) {
             return str;
         }
         
-        console.log("Proof state: " + window.proofStates);
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
             .attr("r", 0)
@@ -452,6 +451,10 @@ function renderTree(treeData) {
             // On mouseover, show the formatted proof context and 
             // proof goal before the given tactic
             .on('mouseover', function (d, i) {
+
+                // don't show state if root
+                if (d == root) return;
+
                 d3.select(this).transition()
                     .duration(50)
                     .attr('opacity', '.85');
@@ -468,8 +471,8 @@ function renderTree(treeData) {
 
                 // Display the formatted information
                 div.html(`${stylizedCtxStr}<br/>_____________________________________________<br/><br/>${stylizedGoal}`)
-                    .style("left", (event.pageX) + "px")
-                    .style("top", (event.pageY - 28) + "px")
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px")
                     .style("background-color", "rgba(0, 0, 0, 0.8)") // Dark background with opacity
                     .style("color", "#FFFFFF") // White text
                     .style("padding", "5px") // Add some padding for readability
