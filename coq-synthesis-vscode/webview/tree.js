@@ -429,6 +429,16 @@ function renderTree(treeData) {
             }
             return scriptTail;
         }
+
+        function stylizeCoqString(str) {
+            // Stylizing match statements
+            // newline before match or end keywords
+            str = str.replace(/\bmatch\b/g, ' </br> match');
+            str = str.replace(/\bend\b/g, ' </br> end');
+            // newline and some space before each case
+            str = str.replace(/\|/g, '</br>&nbsp;&nbsp;  |');
+            return str;
+        }
         
         console.log("Proof state: " + window.proofStates);
         nodeEnter.append("circle")
@@ -439,9 +449,8 @@ function renderTree(treeData) {
                 return d._children ? "lightsteelblue" : "#fff";
             })
 
-            // Proof state != Tree state (e.g., background/foreground goal).
-            // Most likely coming from Proverbot... look at it's return data. 
-
+            // On mouseover, show the formatted proof context and 
+            // proof goal before the given tactic
             .on('mouseover', function (d, i) {
                 d3.select(this).transition()
                     .duration(50)
@@ -451,33 +460,23 @@ function renderTree(treeData) {
                     .duration(50)
                     .style("opacity", .9);
             
-                // Find the proof state matching the node's tactic name
-                let proofState = null;
-                for (const key in proofStates) {
-                    if (proofStates.hasOwnProperty(key) && proofStates[key].tactic === d.name) {
-                        proofState = proofStates[key];
-                        break; // Stop iterating after finding a match
-                    }
-                }
-            
-                let proofStateString = "No proof state available"; // Default message
-            
-                if (proofState) {
-                    proofStateString = `Tactic: ${proofState.tactic}<br/>` +
-                                       `fgGoals: ${proofState.fgGoals.length}<br/>` +
-                                       `bgGoals: ${proofState.bgGoals.length}<br/>` +
-                                       `givenUpGoals: ${proofState.givenUpGoals.length}<br/>` +
-                                       `shelvedGoals: ${proofState.shelvedGoals.length}`;
-                }
-            
+                var stylizedCtx = Array.from(d.proofcontext)
+                var stylizedCtxStr = stylizedCtx.reverse().join('</br></br>')
+                stylizedCtxStr = stylizeCoqString(stylizedCtxStr)
+
+                var stylizedGoal = stylizeCoqString(d.proofgoal)
+
                 // Display the formatted information
-                div.html(`Name: ${d.name}<br/># Child: ${d.childCount || "No data"}<br/><br/>Proof State:<br/>${proofStateString}`)
+                div.html(`${stylizedCtxStr}<br/>_____________________________________________<br/><br/>${stylizedGoal}`)
                     .style("left", (event.pageX) + "px")
                     .style("top", (event.pageY - 28) + "px")
                     .style("background-color", "rgba(0, 0, 0, 0.8)") // Dark background with opacity
                     .style("color", "#FFFFFF") // White text
                     .style("padding", "5px") // Add some padding for readability
-                    .style("border-radius", "5px"); // Optional: Add rounded corners
+                    .style("border-radius", "5px") // Optional: Add rounded corners
+                    .style("width", "250px")
+                    .style("font-size", "10px")
+                    .style("text-align", "left");
             })
 
             .on('mouseout', function (d, i) {
@@ -666,8 +665,5 @@ function renderTree(treeData) {
         d3.select("svg")
             .attr("width", viewerWidth)
             .attr("height", viewerHeight);
-
-        // re-center the root node
-        centerNode(root);
     });
 }
